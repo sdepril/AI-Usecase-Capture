@@ -42,6 +42,13 @@
   .note.warn { background:#FDECE4; color:#7C2D12 }
   .pill { display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; background:var(--accent); color:#fff; font-weight:600 }
   .stack > * + * { margin-top:16px }
+  .modelbox { border:1px solid var(--accent); border-radius:var(--r); padding:14px; background:#fff }
+  .modelbox h2 { color:var(--accent) }
+  .step { display:grid; grid-template-columns:22px 1fr; gap:10px; margin-top:12px } .step > .n { width:22px; height:22px; border-radius:50%; background:var(--ink); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; font-family:Poppins, sans-serif; margin-top:1px }
+  .status { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4 } .status.ok { color:var(--ok) } .status.err { color:#B42318 }
+  .mcard { margin-top:8px; background:var(--soft); border-radius:10px; padding:10px 12px; font-size:12.5px } .mcard b { font-family:Poppins, sans-serif; font-size:13.5px } .mcard .kv { margin-top:6px }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px } .row3 .help { margin:0 0 2px }
+  select:disabled { color:var(--muted); background:var(--soft) }
   .consult { margin-top:12px; border:1px solid var(--line); border-radius:10px; overflow:auto }
   .consult table { min-width:720px }
   .consult table { font-size:12px } .consult th, .consult td { padding:5px 6px } .consult td.num { text-align:right }
@@ -73,7 +80,7 @@
 <header>
   <a class="logo" href="https://costra.io" target="_blank" rel="noopener"><img src="logo.png" alt="Costra" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://costra.io/__l5e/assets-v1/ccb6e6f5-eb43-4485-89b4-b1b834955424/Logo-black.png'}else{this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'COSTRA'}))}"></a><h1>AI Use-Case Capture</h1>
   <span class="sub">describe the use case → token profile · model class · Big-T · BOM for the Azure estimator · cost per valued outcome (low / base / high)</span>
-  <div class="right"><span id="modelsStatus" title="Model prices, intelligence index and speed come from Artificial Analysis via the Costra MCP. Without them you can still compute with manual prices.">no model data</span><input id="token" placeholder="access token" style="width:160px" title="The CAPTURE_TOKEN of this deployment"><button id="loadModels" style="width:auto">Load models</button></div>
+  <div class="right"><span id="modelsStatus">no model data</span></div>
 </header>
 <details class="explain"><summary>How this works</summary>
   <div class="row3">
@@ -95,16 +102,27 @@
       <h2>Parameters</h2>
       <div id="fields"></div>
     </div>
-    <div>
-      <h2>Model price (optional override)</h2>
-      <div class="lbl"><span>Model</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Best-fitted models for this workload, ranked with the LLM Task-Fit score (profile from the archetype, minimum intelligence from the quality bar, monthly cost on your tokens). Pick one to fill the prices below; leave empty to enter prices manually.</span></span></div><select id="modelPick"><option value="">— manual (enter prices below) —</option></select>
-      <div id="p_name" class="help" style="margin-top:4px;color:var(--accent);font-weight:600"></div>
-      <div class="row">
-        <div><div class="lbl"><span>USD / 1M input</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">List price per 1M input tokens. Used only when both fields are filled — for a model not in the data, or a negotiated rate.</span></span></div><input id="p_in" type="number" step="0.01" placeholder="manual"></div>
-        <div><div class="lbl"><span>USD / 1M output</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">List price per 1M output tokens. Output is usually 3–5× input price.</span></span></div><input id="p_out" type="number" step="0.01" placeholder="manual"></div>
-        <div><div class="lbl"><span>USD / 1M cached input</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Price for input tokens served from the prompt cache. Leave empty to use the input price (no cache benefit).</span></span></div><input id="p_cache" type="number" step="0.01" placeholder="optional"></div>
-      </div>
-      
+    <div class="modelbox">
+      <h2>Model &amp; price</h2>
+      <div class="step"><span class="n">1</span><div>
+        <div class="lbl" style="margin-top:0"><span>Fetch model data</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Loads the model list (prices per 1M tokens, intelligence index, speed) from Artificial Analysis through the Costra MCP. Cached for 6 hours on the server. Needs this deployment's access token.</span></span></div>
+        <div class="row" style="grid-template-columns:1fr auto"><input id="token" placeholder="access token (CAPTURE_TOKEN)" type="password"><button id="loadModels" class="primary" style="width:auto">Fetch models</button></div>
+        <div id="fetchStatus" class="status">No model data yet — fetch to get the ranked list. Or skip and enter prices manually below.</div>
+      </div></div>
+      <div class="step"><span class="n">2</span><div>
+        <div class="lbl" style="margin-top:0"><span>Pick a model (ranked for this workload)</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Best-fitted models for this use case, ranked with the LLM Task-Fit score: profile from the archetype, minimum intelligence from the quality bar, monthly cost on your tokens. The list recomputes whenever you change the use case. After a fetch the #1 model is loaded automatically.</span></span></div>
+        <select id="modelPick" disabled><option value="">— fetch models first —</option></select>
+        <div id="modelCard" class="mcard" hidden></div>
+      </div></div>
+      <div class="step"><span class="n">3</span><div>
+        <div class="lbl" style="margin-top:0"><span>Price per 1M tokens (USD)</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Filled from the selected model. Edit to use a negotiated rate, or type your own when no model is selected (manual mode).</span></span></div>
+        <div id="p_name" class="help" style="color:var(--accent);font-weight:600"></div>
+        <div class="row3">
+          <div><span class="help">input</span><input id="p_in" type="number" step="0.01" placeholder="manual"></div>
+          <div><span class="help">output</span><input id="p_out" type="number" step="0.01" placeholder="manual"></div>
+          <div><span class="help">cached input</span><input id="p_cache" type="number" step="0.01" placeholder="optional"></div>
+        </div>
+      </div></div>
     </div>
     <div class="btns"><button class="primary" id="run">Compute</button><button class="ghost" id="reset">Reset defaults</button></div>
   </section>
@@ -184,19 +202,25 @@ $("reset").onclick = () => { renderFields(false); run(); };
 
 // models
 $("token").value = sessionStorage.getItem("capture_token") || new URLSearchParams(location.search).get("token") || "";
+function setStatus(text, cls) { const el = $("fetchStatus"); el.textContent = text; el.className = "status" + (cls ? " " + cls : ""); $("modelsStatus").textContent = cls === "ok" ? text.split(" · ").slice(0, 2).join(" · ") : (cls === "err" ? "model data failed" : "no model data"); }
 async function loadModels() {
-  const t = $("token").value.trim(); if (!t) { $("modelsStatus").textContent = "enter token"; return; }
+  const t = $("token").value.trim(); if (!t) { setStatus("Enter the access token first.", "err"); return; }
   sessionStorage.setItem("capture_token", t);
-  $("modelsStatus").textContent = "loading…"; modelsError = "";
+  setStatus("Fetching model data from Artificial Analysis…"); modelsError = "";
   try {
     const r = await fetch(`/api/models?token=${encodeURIComponent(t)}`); const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
-    models = j.models || []; try { const st = JSON.parse(localStorage.getItem("capture_state") || "null"); if (st?.pick) { run(); $("modelPick").value = st.pick; } } catch {}
-    $("modelsStatus").textContent = `${models.length} models · AA ${(j.fetched_at || "").slice(0, 10)}`;
+    models = j.models || [];
+    setStatus(`${models.length} models loaded · Artificial Analysis · fetched ${new Date(j.fetched_at || Date.now()).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · cached 6h`, "ok");
+    $("modelPick").disabled = false;
     run();
+    let pick = null; try { pick = JSON.parse(localStorage.getItem("capture_state") || "null")?.pick; } catch {}
+    const opts = [...$("modelPick").options].map(o => o.value).filter(Boolean);
+    $("modelPick").value = pick && opts.includes(pick) ? pick : (opts[0] || "");
+    $("modelPick").dispatchEvent(new Event("change"));
   } catch (e) {
     const msg = /401|unauthorized/i.test(e.message) ? "Access token rejected (401) — check CAPTURE_TOKEN in Vercel and redeploy." : /AA_MCP/.test(e.message) ? "Server is missing AA_MCP_URL / AA_MCP_TOKEN — set them in Vercel and redeploy." : /upstream/.test(e.message) ? "The Artificial Analysis app refused the request — check AA_MCP_TOKEN." : "Models unavailable: " + e.message;
-    $("modelsStatus").textContent = msg; modelsError = msg; refreshModelPick();
+    setStatus(msg, "err"); modelsError = msg; refreshModelPick();
   }
 }
 $("loadModels").onclick = loadModels;
@@ -204,8 +228,8 @@ $("modelPick").addEventListener("change", () => {
   const m = models.find(x => x.slug === $("modelPick").value);
   if (m) { $("p_in").value = m.usd_per_1m_input; $("p_out").value = m.usd_per_1m_output; $("p_cache").value = m.usd_per_1m_cache_hit ?? ""; $("p_name").textContent = `${m.name} — from LLM Task-Fit${m.intelligence_index != null ? ` (AA intelligence ${m.intelligence_index})` : ""}`; }
   else { $("p_in").value = ""; $("p_out").value = ""; $("p_cache").value = ""; $("p_name").textContent = ""; }
-  run();
-}); ["p_in", "p_out", "p_cache"].forEach(id => $(id).addEventListener("change", () => { $("p_name").textContent = ""; run(); }));
+  run(); renderModelCard(m);
+}); ["p_in", "p_out", "p_cache"].forEach(id => $(id).addEventListener("change", () => { $("p_name").textContent = ""; $("modelPick").value = ""; $("modelCard").hidden = true; run(); }));
 
 function priceOverride() {
   const pin = +$("p_in").value, pout = +$("p_out").value, pc = +$("p_cache").value;
@@ -234,9 +258,17 @@ function applyModelFromTaskFit() {
   history.replaceState(null, "", location.pathname);
 }
 
+function renderModelCard(m) {
+  const c = $("modelCard"); if (!m) { c.hidden = true; return; }
+  const b = result?.scenarios?.base; const opt = [...$("modelPick").options].find(o => o.value === m.slug); const fit = opt ? (opt.textContent.match(/fit (\d+)/) || [])[1] : null;
+  c.hidden = false;
+  c.innerHTML = `<b>${m.name}</b> <span class="muted">${m.creator || ""}</span>${fit ? ` <span class="pill">fit ${fit}</span>` : ""}
+    <div class="kv"><span>intelligence</span><span>${m.intelligence_index ?? "—"}</span><span>speed</span><span>${m.output_tokens_per_sec ?? "—"} tok/s</span><span>price in / out / cached</span><span>$${m.usd_per_1m_input} / $${m.usd_per_1m_output} / ${m.usd_per_1m_cache_hit != null ? "$" + m.usd_per_1m_cache_hit : "—"} per 1M</span><span>model cost / month</span><span>${b?.cost?.model_usd_month != null ? "$ " + fmt(b.cost.model_usd_month) + " (base)" : "—"}</span></div>`;
+}
 function refreshModelPick() {
   const pick = $("modelPick"), cur = pick.value;
-  const head = models.length ? '<option value="">— manual (enter prices below) —</option>' : `<option value="">— manual · ${modelsError ? modelsError : "load models (token top right) for the ranked list"} —</option>`;
+  const head = models.length ? '<option value="">— manual (enter prices below) —</option>' : '<option value="">— fetch models first —</option>';
+  pick.disabled = !models.length;
   let opts = "";
   if (models.length && result) {
     const b = result.scenarios.base, p = result.params;
@@ -269,6 +301,7 @@ function run() {
   $("bom").querySelector("tbody").innerHTML = b.bom.map(r => `<tr><td>${r.component}</td><td>${r.role}</td><td>${r.sku_hint}</td><td class="num">${r.quantity < 100 ? r.quantity : fmt(r.quantity)}</td><td>${r.unit}</td><td class="muted">${r.source}</td></tr>`).join("");
   const src = cfg.sources;
   saveState();
+  { const m = models.find(x => x.slug === $("modelPick").value); if (m) renderModelCard(m); }
   $("notes").innerHTML = b.notes.map(n => `<div class="note">${n}</div>`).join("") + `<table style="margin-top:8px"><thead><tr><th>Assumption</th><th>Value</th><th>Source</th><th>Status</th></tr></thead><tbody>${Object.entries(src).map(([k, v]) => `<tr><td>${k}</td><td>${JSON.stringify(k.split(".").reduce((o, s) => o?.[s], cfg.defaults))}</td><td class="muted">${v.source}</td><td class="${/to-verify/.test(v.status) ? "muted" : ""}">${v.status}</td></tr>`).join("")}</tbody></table>`;
 }
 function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = name; a.click(); }
