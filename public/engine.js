@@ -289,7 +289,7 @@ export function computeScenario(archetype, params, cfg, scenarioName, models, pr
   if (model) {
     const pin = model.usd_per_1m_input, pout = model.usd_per_1m_output, pc = model.usd_per_1m_cache_hit ?? pin;
     modelCostUsd = ((input * pin + cached * pc + output * pout) / 1e6) * batchFactor;
-    priceSource = priceOverride ? "manual" : "artificial-analysis";
+    priceSource = priceOverride ? (priceOverride.slug === "manual" ? "manual" : "task-fit") : "artificial-analysis";
   }
   const embeddingMonth = (T.embeddingPerUnit || 0) * attemptsMonth + (p.reindex_fraction && p.corpus_pages ? p.reindex_fraction * p.corpus_pages * cfg.defaults.wpp.prose * cfg.defaults.tpw[p.language || "en"] : 0);
   const embeddingUsd = (archetype === "assistant" && !p.rag) ? 0 : embeddingMonth / 1e6 * cfg.defaults.embedding_usd_per_1m;
@@ -377,6 +377,7 @@ export function toTaskFitParams(result, cfg, meta = {}) {
     tkSR: String(Math.round(100 * p.success_rate)),
     uc: meta.name || result.label,
   });
+  if (meta.ret) q.set("ret", meta.ret);
   return q.toString();
 }
 export function toTaskFitUrl(result, cfg, meta = {}) {

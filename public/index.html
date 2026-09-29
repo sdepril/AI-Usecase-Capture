@@ -92,9 +92,11 @@
     <div>
       <h2>Model price (optional override)</h2>
       <div class="lbl"><span>Model</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Leave on "recommended" to let the tool pick the cheapest model above your quality bar (Artificial Analysis data). Pick one to force a model.</span></span></div><select id="modelPick"><option value="">— recommended by quality bar & latency —</option></select>
+      <div id="p_name" class="help" style="margin-top:4px;color:var(--accent);font-weight:600"></div>
       <div class="row">
         <div><div class="lbl"><span>USD / 1M input</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">List price per 1M input tokens. Used only when both fields are filled — for a model not in the data, or a negotiated rate.</span></span></div><input id="p_in" type="number" step="0.01" placeholder="manual"></div>
         <div><div class="lbl"><span>USD / 1M output</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">List price per 1M output tokens. Output is usually 3–5× input price.</span></span></div><input id="p_out" type="number" step="0.01" placeholder="manual"></div>
+        <div><div class="lbl"><span>USD / 1M cached input</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Price for input tokens served from the prompt cache. Leave empty to use the input price (no cache benefit).</span></span></div><input id="p_cache" type="number" step="0.01" placeholder="optional"></div>
       </div>
       
     </div>
@@ -190,15 +192,35 @@ async function loadModels() {
   } catch (e) { $("modelsStatus").textContent = "models unavailable: " + e.message; }
 }
 $("loadModels").onclick = loadModels;
-$("modelPick").addEventListener("change", run); $("p_in").addEventListener("change", run); $("p_out").addEventListener("change", run);
+$("modelPick").addEventListener("change", run); ["p_in", "p_out", "p_cache"].forEach(id => $(id).addEventListener("change", () => { $("p_name").textContent = ""; run(); }));
 
 function priceOverride() {
-  const pin = +$("p_in").value, pout = +$("p_out").value;
-  if (pin > 0 && pout > 0) return { name: "manual", slug: "manual", usd_per_1m_input: pin, usd_per_1m_output: pout, usd_per_1m_cache_hit: null, intelligence_index: null };
+  const pin = +$("p_in").value, pout = +$("p_out").value, pc = +$("p_cache").value;
+  if (pin > 0 && pout > 0) return { name: $("p_name").textContent.split(" — ")[0] || "manual", slug: $("p_name").textContent.includes("Task-Fit") ? "task-fit" : "manual", usd_per_1m_input: pin, usd_per_1m_output: pout, usd_per_1m_cache_hit: pc > 0 ? pc : null, intelligence_index: null };
   const s = $("modelPick").value; if (s) return models.find(m => m.slug === s) || null;
   return null;
 }
-function meta() { return { name: $("m_name").value, outcome_unit: $("m_unit").value, count_source: $("m_count").value, quality_floor: $("m_floor").value }; }
+function meta() { return { name: $("m_name").value, outcome_unit: $("m_unit").value, count_source: $("m_count").value, quality_floor: $("m_floor").value, ret: location.origin + location.pathname }; }
+function saveState() { try { localStorage.setItem("capture_state", JSON.stringify({ archetype: currentArch, params: readParams(), meta: meta(), p_in: $("p_in").value, p_out: $("p_out").value, p_cache: $("p_cache").value, p_name: $("p_name").textContent })); } catch {} }
+function restoreState() {
+  try {
+    const st = JSON.parse(localStorage.getItem("capture_state") || "null"); if (!st) return false;
+    if (ARCHETYPES[st.archetype]) currentArch = st.archetype;
+    renderArch(); renderFields(false);
+    for (const [k, v] of Object.entries(st.params || {})) { const el = $("fields").querySelector(`[data-id="${k}"]`); if (!el) continue; if (el.classList.contains("seg")) { el.dataset.value = String(v); el.querySelectorAll("button").forEach(b => b.className = b.dataset.v === String(v) ? "on" + (el.dataset.kind === "bool" && v === true ? " yes" : "") : ""); } else el.value = v; }
+    applyShowIf();
+    $("m_name").value = st.meta?.name || ""; $("m_unit").value = st.meta?.outcome_unit || ""; $("m_count").value = st.meta?.count_source || ""; $("m_floor").value = st.meta?.quality_floor || "";
+    $("p_in").value = st.p_in || ""; $("p_out").value = st.p_out || ""; $("p_cache").value = st.p_cache || ""; $("p_name").textContent = st.p_name || "";
+    return true;
+  } catch { return false; }
+}
+function applyModelFromTaskFit() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("pin") || !q.has("pout")) return;
+  $("p_in").value = q.get("pin"); $("p_out").value = q.get("pout"); $("p_cache").value = q.get("pcache") || "";
+  $("p_name").textContent = `${q.get("model") || "model"} — from LLM Task-Fit${q.get("idx") ? ` (AA intelligence ${q.get("idx")})` : ""}`;
+  history.replaceState(null, "", location.pathname);
+}
 
 function run() {
   const a = currentArch;
@@ -221,6 +243,7 @@ function run() {
     + (sel.candidates?.length ? `<table style="margin-top:8px"><thead><tr><th>Candidate</th><th>Index</th><th>tok/s</th><th style="text-align:right">$ in</th><th style="text-align:right">$ out</th></tr></thead><tbody>${sel.candidates.map(m => `<tr><td>${m.name}</td><td>${m.intelligence_index ?? "—"}</td><td>${m.output_tokens_per_sec ?? "—"}</td><td class="num">${m.usd_per_1m_input}</td><td class="num">${m.usd_per_1m_output}</td></tr>`).join("")}</tbody></table>` : "");
   $("bom").querySelector("tbody").innerHTML = b.bom.map(r => `<tr><td>${r.component}</td><td>${r.role}</td><td>${r.sku_hint}</td><td class="num">${r.quantity < 100 ? r.quantity : fmt(r.quantity)}</td><td>${r.unit}</td><td class="muted">${r.source}</td></tr>`).join("");
   const src = cfg.sources;
+  saveState();
   $("notes").innerHTML = b.notes.map(n => `<div class="note">${n}</div>`).join("") + `<table style="margin-top:8px"><thead><tr><th>Assumption</th><th>Value</th><th>Source</th><th>Status</th></tr></thead><tbody>${Object.entries(src).map(([k, v]) => `<tr><td>${k}</td><td>${JSON.stringify(k.split(".").reduce((o, s) => o?.[s], cfg.defaults))}</td><td class="muted">${v.source}</td><td class="${/to-verify/.test(v.status) ? "muted" : ""}">${v.status}</td></tr>`).join("")}</tbody></table>`;
 }
 function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = name; a.click(); }
@@ -230,7 +253,8 @@ $("dlMd").onclick = () => result && download("architecture.md", toArchitectureMa
 $("copyMd").onclick = async () => { if (result) { await navigator.clipboard.writeText(toArchitectureMarkdown(result, meta())); $("copyMd").textContent = "Copied ✓"; setTimeout(() => $("copyMd").textContent = "Copy markdown for Azure estimator", 1500); } };
 ["m_name", "m_unit", "m_count", "m_floor"].forEach(id => $(id).addEventListener("change", run));
 $("run").onclick = run;
-renderArch(); renderFields(false); run();
+if (!restoreState()) { renderArch(); renderFields(false); }
+applyModelFromTaskFit(); run();
 if ($("token").value) loadModels();
 </script>
 </body>
