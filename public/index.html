@@ -4,47 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Use-Case Capture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#F2F0EE; --ink:#1F2937; --accent:#E8432A; --muted:#6B7280; --card:#FFFFFF; --line:#DDD8D3; --soft:#FBE9E6; --ok:#2F6F4E; --warn:#B45309; }
+  :root { --bg:#F8F8F8; --hero:#FFF9EC; --ink:#0D2443; --navy:#1A3356; --navy2:#061A36; --accent:#ED744B; --muted:#52657D; --card:#FFFFFF; --line:#E9E4DC; --soft:#F3F0EA; --cream:#EADDC1; --ok:#2F6F4E; --warn:#B45309; --r:12px; }
   * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 Calibri, "Segoe UI", -apple-system, sans-serif }
-  header { padding:18px 24px; display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; border-bottom:1px solid var(--line) }
-  header h1 { margin:0; font-size:20px } header h1 b { color:var(--accent) }
-  header .sub { color:var(--muted); font-size:12.5px }
+  body { margin:0; background:linear-gradient(180deg, var(--hero) 0%, var(--bg) 320px); color:var(--ink); font:14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif }
+  h1, h2, h3, .big { font-family:Poppins, Inter, sans-serif }
+  header { padding:18px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap }
+  header .logo { font-family:Poppins, sans-serif; font-weight:700; letter-spacing:.14em; font-size:18px; color:var(--ink) }
+  header h1 { margin:0; font-size:18px; font-weight:600 }
+  header .sub { color:var(--muted); font-size:12.5px; max-width:640px }
   header .right { margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted) }
-  main { display:grid; grid-template-columns: 380px 1fr; gap:20px; padding:20px 24px; max-width:1500px }
+  main { display:grid; grid-template-columns: 380px 1fr; gap:22px; padding:8px 28px 40px; max-width:1500px }
   @media (max-width: 900px) { main { grid-template-columns:1fr } }
-  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
-  .panel h2 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 10px }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px }
+  .panel h2 { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; font-weight:600 }
   label { display:block; font-size:12px; color:var(--muted); margin-top:9px }
-  input, select, textarea, button { font:inherit; width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink) }
+  input, select, textarea, button { font:inherit; width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink) }
+  input:focus, select:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:transparent }
   input[type=checkbox] { width:auto; margin-right:6px }
   .row { display:grid; grid-template-columns:1fr 1fr; gap:8px }
   .help { font-size:11px; color:var(--muted) }
-  button { cursor:pointer } button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600 }
-  button.ghost { background:transparent }
-  .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
-  .btns button { width:auto }
+  button { cursor:pointer; font-weight:500 } button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; border-radius:999px } button.ghost { background:transparent; border-radius:999px }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px } .btns button { width:auto; border-radius:999px }
   .scen { display:grid; grid-template-columns:repeat(3,1fr); gap:12px }
-  .sc { border:1px solid var(--line); border-radius:10px; padding:12px; background:#fff }
-  .sc.base { border-color:var(--accent); box-shadow:0 0 0 2px var(--soft) }
-  .sc h3 { margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted) }
-  .big { font-size:26px; font-weight:700; line-height:1.1 }
-  .big small { font-size:12px; font-weight:400; color:var(--muted) }
-  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; margin-top:8px } .kv span:nth-child(odd) { color:var(--muted) }
-  table { width:100%; border-collapse:collapse; font-size:12.5px } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top } th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em } td.num { text-align:right; font-variant-numeric:tabular-nums }
-  .note { background:var(--soft); border-radius:8px; padding:8px 10px; font-size:12.5px; margin-top:8px }
-  .note.warn { background:#FEF3C7; color:#7C2D12 }
-  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:var(--soft); color:var(--accent); font-weight:600 }
-  .stack > * + * { margin-top:14px }
+  .sc { border-radius:var(--r); padding:14px; background:var(--soft); color:var(--ink) }
+  .sc.base { background:linear-gradient(180deg, var(--navy) 0%, var(--navy2) 100%); color:#fff }
+  .sc h3 { margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600 } .sc.base h3 { color:rgba(255,255,255,.6) }
+  .big { font-size:26px; font-weight:600; line-height:1.1 } .sc.base .big { color:#fff }
+  .big small { font-size:12px; font-weight:400; color:var(--muted); font-family:Inter } .sc.base .big small { color:rgba(255,255,255,.6) }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; margin-top:8px } .kv span:nth-child(odd) { color:var(--muted) } .sc.base .kv span:nth-child(odd) { color:rgba(255,255,255,.6) }
+  .sc .help { color:var(--muted) } .sc.base .help { color:rgba(255,255,255,.7) }
+  table { width:100%; border-collapse:collapse; font-size:12.5px } th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top } th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em } td.num { text-align:right; font-variant-numeric:tabular-nums }
+  .note { background:var(--soft); border-radius:10px; padding:8px 12px; font-size:12.5px; margin-top:8px }
+  .note.warn { background:#FDECE4; color:#7C2D12 }
+  .pill { display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; background:var(--accent); color:#fff; font-weight:600 }
+  .stack > * + * { margin-top:16px }
   .muted { color:var(--muted) }
-  pre { background:#1F2937; color:#E5E7EB; padding:12px; border-radius:8px; font-size:11.5px; overflow:auto; max-height:320px }
-  .bar { height:6px; background:#EEE; border-radius:3px; overflow:hidden; margin-top:6px } .bar i { display:block; height:100%; background:var(--accent) }
+  .bar { height:6px; background:rgba(13,36,67,.08); border-radius:3px; overflow:hidden; margin-top:6px } .bar i { display:block; height:100%; background:var(--accent) } .sc.base .bar { background:rgba(255,255,255,.15) }
 </style>
 </head>
 <body>
 <header>
-  <h1><b>Costra</b> AI Use-Case Capture</h1>
+  <span class="logo">COSTRA</span><h1>AI Use-Case Capture</h1>
   <span class="sub">describe the use case → token profile · model class · Big-T · BOM for the Azure estimator · cost per valued outcome (low / base / high)</span>
   <div class="right"><span id="modelsStatus">no model data</span><input id="token" placeholder="access token" style="width:160px"><button id="loadModels" style="width:auto">Load models</button></div>
 </header>
