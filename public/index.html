@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Use-Case Capture</title>
+<style>
+  :root { --bg:#F2F0EE; --ink:#1F2937; --accent:#E8432A; --muted:#6B7280; --card:#FFFFFF; --line:#DDD8D3; --soft:#FBE9E6; --ok:#2F6F4E; --warn:#B45309; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 Calibri, "Segoe UI", -apple-system, sans-serif }
+  header { padding:18px 24px; display:flex; align-items:baseline; gap:16px; flex-wrap:wrap; border-bottom:1px solid var(--line) }
+  header h1 { margin:0; font-size:20px } header h1 b { color:var(--accent) }
+  header .sub { color:var(--muted); font-size:12.5px }
+  header .right { margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted) }
+  main { display:grid; grid-template-columns: 380px 1fr; gap:20px; padding:20px 24px; max-width:1500px }
+  @media (max-width: 900px) { main { grid-template-columns:1fr } }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
+  .panel h2 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 10px }
+  label { display:block; font-size:12px; color:var(--muted); margin-top:9px }
+  input, select, textarea, button { font:inherit; width:100%; padding:7px 9px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink) }
+  input[type=checkbox] { width:auto; margin-right:6px }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:8px }
+  .help { font-size:11px; color:var(--muted) }
+  button { cursor:pointer } button.primary { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600 }
+  button.ghost { background:transparent }
+  .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
+  .btns button { width:auto }
+  .scen { display:grid; grid-template-columns:repeat(3,1fr); gap:12px }
+  .sc { border:1px solid var(--line); border-radius:10px; padding:12px; background:#fff }
+  .sc.base { border-color:var(--accent); box-shadow:0 0 0 2px var(--soft) }
+  .sc h3 { margin:0 0 6px; font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted) }
+  .big { font-size:26px; font-weight:700; line-height:1.1 }
+  .big small { font-size:12px; font-weight:400; color:var(--muted) }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; margin-top:8px } .kv span:nth-child(odd) { color:var(--muted) }
+  table { width:100%; border-collapse:collapse; font-size:12.5px } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top } th { color:var(--muted); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em } td.num { text-align:right; font-variant-numeric:tabular-nums }
+  .note { background:var(--soft); border-radius:8px; padding:8px 10px; font-size:12.5px; margin-top:8px }
+  .note.warn { background:#FEF3C7; color:#7C2D12 }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:var(--soft); color:var(--accent); font-weight:600 }
+  .stack > * + * { margin-top:14px }
+  .muted { color:var(--muted) }
+  pre { background:#1F2937; color:#E5E7EB; padding:12px; border-radius:8px; font-size:11.5px; overflow:auto; max-height:320px }
+  .bar { height:6px; background:#EEE; border-radius:3px; overflow:hidden; margin-top:6px } .bar i { display:block; height:100%; background:var(--accent) }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Costra</b> AI Use-Case Capture</h1>
+  <span class="sub">describe the use case → token profile · model class · Big-T · BOM for the Azure estimator · cost per valued outcome (low / base / high)</span>
+  <div class="right"><span id="modelsStatus">no model data</span><input id="token" placeholder="access token" style="width:160px"><button id="loadModels" style="width:auto">Load models</button></div>
+</header>
+<main>
+  <section class="panel stack">
+    <div>
+      <h2>Use case</h2>
+      <label>Name<input id="m_name" placeholder="e.g. Contract summarisation"></label>
+      <label>Archetype<select id="archetype"></select></label>
+      <div class="row">
+        <label>Outcome unit<input id="m_unit" placeholder="e.g. reviewed contract"></label>
+        <label>Where is it counted?<input id="m_count" placeholder="e.g. DMS status 'reviewed'"></label>
+      </div>
+      <label>Quality floor (what counts as a valued outcome)<input id="m_floor" placeholder="e.g. summary accepted by reviewer without edits"></label>
+    </div>
+    <div>
+      <h2>Parameters</h2>
+      <div id="fields"></div>
+    </div>
+    <div>
+      <h2>Model price (optional override)</h2>
+      <select id="modelPick"><option value="">— recommended by quality bar & latency —</option></select>
+      <div class="row">
+        <label>USD / 1M input<input id="p_in" type="number" step="0.01" placeholder="manual"></label>
+        <label>USD / 1M output<input id="p_out" type="number" step="0.01" placeholder="manual"></label>
+      </div>
+      <div class="help">Manual prices are used only when both fields are filled.</div>
+    </div>
+    <div class="btns"><button class="primary" id="run">Compute</button><button class="ghost" id="reset">Reset defaults</button></div>
+  </section>
+
+  <section class="stack">
+    <div class="panel">
+      <h2>Cost per valued outcome <span class="muted">(model + embeddings; infra via estimator, labour via ledger)</span></h2>
+      <div class="scen" id="scen"></div>
+      <div id="flags"></div>
+    </div>
+    <div class="panel">
+      <h2>Model</h2>
+      <div id="model"></div>
+    </div>
+    <div class="panel">
+      <h2>Bill of materials <span class="muted">(base scenario)</span></h2>
+      <table id="bom"><thead><tr><th>Component</th><th>Role</th><th>SKU hint</th><th style="text-align:right">Quantity</th><th>Unit</th><th>Source</th></tr></thead><tbody></tbody></table>
+      <div class="btns"><button id="dlJson" style="width:auto">Download bom.json</button><button id="dlMd" style="width:auto">Download architecture.md</button><button id="copyMd" style="width:auto" class="ghost">Copy markdown for Azure estimator</button></div>
+    </div>
+    <div class="panel"><h2>Assumptions & notes</h2><div id="notes"></div></div>
+  </section>
+</main>
+<script type="module">
+import { ARCHETYPES, defaultsFor, compute, toBomJson, toArchitectureMarkdown } from "./engine.js";
+const cfg = await (await fetch("./config.json")).json();
+let models = [], result = null;
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
+const eur = n => n == null ? "—" : "€ " + (n < 1 ? n.toFixed(3) : n.toFixed(2));
+
+// archetype select + dynamic fields
+const aSel = $("archetype");
+for (const [k, v] of Object.entries(ARCHETYPES)) aSel.insertAdjacentHTML("beforeend", `<option value="${k}">${v.label}</option>`);
+function renderFields(keepValues = false) {
+  const a = aSel.value, prev = keepValues ? readParams() : defaultsFor(a);
+  const box = $("fields"); box.innerHTML = "";
+  for (const f of ARCHETYPES[a].fields) {
+    const v = prev[f.id] ?? f.default;
+    let ctrl;
+    if (f.type === "select") ctrl = `<select data-id="${f.id}">${f.options.map(o => `<option ${o == v ? "selected" : ""}>${o}</option>`).join("")}</select>`;
+    else if (f.type === "bool") ctrl = `<span><input type="checkbox" data-id="${f.id}" ${v ? "checked" : ""}> yes</span>`;
+    else ctrl = `<input type="number" data-id="${f.id}" value="${v}" step="${f.step ?? 1}">`;
+    box.insertAdjacentHTML("beforeend", `<label data-field="${f.id}">${f.label}${f.help ? ` <span class="help">— ${f.help}</span>` : ""}${ctrl}</label>`);
+  }
+  box.querySelectorAll("[data-id]").forEach(el => el.addEventListener("change", () => { applyShowIf(); run(); }));
+  applyShowIf();
+}
+function readParams() {
+  const out = {};
+  $("fields").querySelectorAll("[data-id]").forEach(el => { const id = el.dataset.id; out[id] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? (isNaN(+el.value) ? el.value : el.value) : +el.value; });
+  return out;
+}
+function applyShowIf() {
+  const p = readParams();
+  for (const f of ARCHETYPES[aSel.value].fields) {
+    const el = $("fields").querySelector(`[data-field="${f.id}"]`);
+    if (!f.showIf) continue;
+    const [k, vals] = Object.entries(f.showIf)[0];
+    el.style.display = vals.includes(p[k]) ? "" : "none";
+  }
+}
+aSel.addEventListener("change", () => { renderFields(false); run(); });
+$("reset").onclick = () => { renderFields(false); run(); };
+
+// models
+$("token").value = sessionStorage.getItem("capture_token") || new URLSearchParams(location.search).get("token") || "";
+async function loadModels() {
+  const t = $("token").value.trim(); if (!t) { $("modelsStatus").textContent = "enter token"; return; }
+  sessionStorage.setItem("capture_token", t);
+  $("modelsStatus").textContent = "loading…";
+  try {
+    const r = await fetch(`/api/models?token=${encodeURIComponent(t)}`); const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    models = j.models || []; $("modelsStatus").textContent = `${models.length} models · AA ${(j.fetched_at || "").slice(0, 10)}`;
+    const pick = $("modelPick"); pick.innerHTML = '<option value="">— recommended by quality bar & latency —</option>';
+    [...models].sort((a, b) => (b.intelligence_index ?? 0) - (a.intelligence_index ?? 0)).forEach(m => pick.insertAdjacentHTML("beforeend", `<option value="${m.slug}">${m.name} · idx ${m.intelligence_index ?? "—"} · $${m.usd_per_1m_input}/${m.usd_per_1m_output}</option>`));
+    run();
+  } catch (e) { $("modelsStatus").textContent = "models unavailable: " + e.message; }
+}
+$("loadModels").onclick = loadModels;
+$("modelPick").addEventListener("change", run); $("p_in").addEventListener("change", run); $("p_out").addEventListener("change", run);
+
+function priceOverride() {
+  const pin = +$("p_in").value, pout = +$("p_out").value;
+  if (pin > 0 && pout > 0) return { name: "manual", slug: "manual", usd_per_1m_input: pin, usd_per_1m_output: pout, usd_per_1m_cache_hit: null, intelligence_index: null };
+  const s = $("modelPick").value; if (s) return models.find(m => m.slug === s) || null;
+  return null;
+}
+function meta() { return { name: $("m_name").value, outcome_unit: $("m_unit").value, count_source: $("m_count").value, quality_floor: $("m_floor").value }; }
+
+function run() {
+  const a = aSel.value;
+  result = compute(a, readParams(), cfg, models, priceOverride());
+  const S = result.scenarios, b = S.base;
+  $("scen").innerHTML = ["low", "base", "high"].map(s => { const r = S[s]; const cpo = r.cost.cost_per_outcome_eur, bl = r.cost.baseline_per_outcome_eur;
+    return `<div class="sc ${s}"><h3>${s}</h3><div class="big">${eur(cpo)} <small>per ${result.unit}</small></div>
+      <div class="bar"><i style="width:${cpo != null && bl > 0 ? Math.min(100, 100 * cpo / bl) : 0}%"></i></div><div class="help">baseline today ${eur(bl)} · ${cpo != null && bl > 0 ? (100 * (1 - cpo / bl)).toFixed(1) + "% below baseline" : "no model price"}</div>
+      <div class="kv"><span>units / month</span><span>${fmt(r.month.units)} (${fmt(r.cost.outcomes_month)} valued)</span><span>attempts a</span><span>${r.assumptions.a}</span><span>input</span><span>${fmt(r.month.input)}</span><span>cached</span><span>${fmt(r.month.cached)} (h ${r.assumptions.h})</span><span>output</span><span>${fmt(r.month.output)}</span><span>model $/month</span><span>${r.cost.model_usd_month == null ? "—" : "$ " + fmt(r.cost.model_usd_month)}</span></div></div>`; }).join("");
+  const fl = [];
+  if (b.flags.unbounded) fl.push(`<div class="note warn"><b>T(∞)</b> — no hard stop per task: cost is unbounded. Set a max tokens per task.</div>`);
+  if (b.flags.capped) fl.push(`<div class="note warn">Hard stop is hit in the base scenario — expect a lower success rate than entered.</div>`);
+  if (b.flags.ptu_signal) fl.push(`<div class="note">Volume above the PTU break-even placeholder — consider provisioned throughput <b>in the Run phase only</b>, after measuring actual consumption.</div>`);
+  fl.push(`<div class="note"><span class="pill">${result.bigT}</span> per ${result.unit}: ${fmt(b.per_unit.input)} input / ${fmt(b.per_unit.output)} output / ${fmt(b.per_unit.cacheable)} cacheable tokens · context needed ≈ ${fmt(b.per_unit.context_needed)}</div>`);
+  $("flags").innerHTML = fl.join("");
+  const sel = b.model.selection, used = b.model.used;
+  $("model").innerHTML = (used ? `<div><b>${used.name}</b> <span class="muted">(${b.model.price_source})</span> — $${used.usd_per_1m_input} / $${used.usd_per_1m_output} per 1M in/out${used.usd_per_1m_cache_hit != null ? `, cache hit $${used.usd_per_1m_cache_hit}` : ""}${used.intelligence_index != null ? ` · AA intelligence ${used.intelligence_index}` : ""}</div>` : `<div class="muted">No model priced yet — load models or enter prices manually.</div>`)
+    + `<div class="help" style="margin-top:6px">${sel.note}</div>`
+    + (sel.defaultAlternative && used && sel.defaultAlternative.slug !== used.slug ? `<div class="help">Default "smartest" pick would be ${sel.defaultAlternative.name} at $${sel.defaultAlternative.usd_per_1m_input}/$${sel.defaultAlternative.usd_per_1m_output} — the rightsizing delta is the argument.</div>` : "")
+    + (sel.candidates?.length ? `<table style="margin-top:8px"><thead><tr><th>Candidate</th><th>Index</th><th>tok/s</th><th style="text-align:right">$ in</th><th style="text-align:right">$ out</th></tr></thead><tbody>${sel.candidates.map(m => `<tr><td>${m.name}</td><td>${m.intelligence_index ?? "—"}</td><td>${m.output_tokens_per_sec ?? "—"}</td><td class="num">${m.usd_per_1m_input}</td><td class="num">${m.usd_per_1m_output}</td></tr>`).join("")}</tbody></table>` : "");
+  $("bom").querySelector("tbody").innerHTML = b.bom.map(r => `<tr><td>${r.component}</td><td>${r.role}</td><td>${r.sku_hint}</td><td class="num">${r.quantity < 100 ? r.quantity : fmt(r.quantity)}</td><td>${r.unit}</td><td class="muted">${r.source}</td></tr>`).join("");
+  const src = cfg.sources;
+  $("notes").innerHTML = b.notes.map(n => `<div class="note">${n}</div>`).join("") + `<table style="margin-top:8px"><thead><tr><th>Assumption</th><th>Value</th><th>Source</th><th>Status</th></tr></thead><tbody>${Object.entries(src).map(([k, v]) => `<tr><td>${k}</td><td>${JSON.stringify(k.split(".").reduce((o, s) => o?.[s], cfg.defaults))}</td><td class="muted">${v.source}</td><td class="${/to-verify/.test(v.status) ? "muted" : ""}">${v.status}</td></tr>`).join("")}</tbody></table>`;
+}
+function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = name; a.click(); }
+$("dlJson").onclick = () => result && download("bom.json", JSON.stringify(toBomJson(result, meta()), null, 2));
+$("dlMd").onclick = () => result && download("architecture.md", toArchitectureMarkdown(result, meta()));
+$("copyMd").onclick = async () => { if (result) { await navigator.clipboard.writeText(toArchitectureMarkdown(result, meta())); $("copyMd").textContent = "Copied ✓"; setTimeout(() => $("copyMd").textContent = "Copy markdown for Azure estimator", 1500); } };
+["m_name", "m_unit", "m_count", "m_floor"].forEach(id => $(id).addEventListener("change", run));
+$("run").onclick = run;
+renderFields(false); run();
+if ($("token").value) loadModels();
+</script>
+</body>
+</html>

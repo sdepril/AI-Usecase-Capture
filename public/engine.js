@@ -1,0 +1,357 @@
+// AI Use-Case Capture → BOM — deterministic engine (spec v0.1).
+// Single source of truth: runs unchanged in the browser (ES module) and in Node (tests, CLI).
+// No prices live here except what the caller passes in (model list from Artificial Analysis).
+
+export const ARCHETYPES = {
+  document: {
+    label: "Document processing (extraction / summarisation)",
+    unit: "document",
+    bigT: "T(n)",
+    fields: [
+      { id: "docs_per_day", label: "Documents per day", type: "number", default: 200 },
+      { id: "pages", label: "Pages per document", type: "number", default: 12 },
+      { id: "doc_type", label: "Document type", type: "select", options: ["prose", "legal", "form", "slides"], default: "legal", help: "sets words per page" },
+      { id: "language", label: "Language", type: "select", options: ["en", "nl", "fr", "de"], default: "nl" },
+      { id: "scanned", label: "Source is scanned (needs OCR)", type: "bool", default: false },
+      { id: "output_kind", label: "Output", type: "select", options: ["extraction", "summary", "both"], default: "extraction" },
+      { id: "fields", label: "Fields to extract", type: "number", default: 25, showIf: { output_kind: ["extraction", "both"] } },
+      { id: "summary_words", label: "Summary length (words)", type: "number", default: 300, showIf: { output_kind: ["summary", "both"] } },
+      { id: "system_tokens", label: "Prompt overhead S (tokens)", type: "number", default: 600, help: "instructions + schema; cacheable" },
+      { id: "batch", label: "Batch processing allowed (SLA > 1h)", type: "bool", default: true },
+      { id: "retry_rate", label: "Retry rate", type: "number", default: 0.15, step: 0.01 },
+      { id: "eval_fraction", label: "Automated eval calls (fraction)", type: "number", default: 0.1, step: 0.01 },
+      { id: "success_rate", label: "Success rate q (quality floor)", type: "number", default: 0.85, step: 0.01 },
+      { id: "quality_bar", label: "Quality bar", type: "select", options: ["low", "medium", "high"], default: "high" },
+      { id: "baseline_minutes", label: "Baseline: manual minutes per document", type: "number", default: 20 },
+      { id: "baseline_rate", label: "Baseline: hourly rate (EUR)", type: "number", default: 65 },
+    ],
+  },
+  assistant: {
+    label: "Assistant / chat (optionally with knowledge base)",
+    unit: "conversation",
+    bigT: "T(n·k)",
+    fields: [
+      { id: "conv_per_day", label: "Conversations per day", type: "number", default: 400 },
+      { id: "turns", label: "Turns per conversation", type: "number", default: 6 },
+      { id: "user_words", label: "User words per turn", type: "number", default: 40 },
+      { id: "answer_words", label: "Answer words per turn", type: "number", default: 150 },
+      { id: "language", label: "Language", type: "select", options: ["en", "nl", "fr", "de"], default: "nl" },
+      { id: "system_tokens", label: "System prompt S (tokens)", type: "number", default: 800, help: "re-billed every turn; cacheable" },
+      { id: "history_max", label: "History cap H_max (tokens, 0 = full history)", type: "number", default: 0 },
+      { id: "rag", label: "Uses a knowledge base (RAG)", type: "bool", default: true },
+      { id: "chunks", label: "Chunks per turn k", type: "number", default: 5, showIf: { rag: [true] } },
+      { id: "chunk_tokens", label: "Chunk size c (tokens)", type: "number", default: 400, showIf: { rag: [true] } },
+      { id: "corpus_pages", label: "Corpus size (pages)", type: "number", default: 20000, showIf: { rag: [true] } },
+      { id: "reindex_fraction", label: "Re-index per month (fraction of corpus)", type: "number", default: 0.1, step: 0.01, showIf: { rag: [true] } },
+      { id: "guardrails", label: "Guardrail / moderation calls", type: "bool", default: true },
+      { id: "latency", label: "Latency requirement", type: "select", options: ["interactive", "background", "batch"], default: "interactive" },
+      { id: "retry_rate", label: "Retry rate", type: "number", default: 0.1, step: 0.01 },
+      { id: "success_rate", label: "Success rate q", type: "number", default: 0.8, step: 0.01 },
+      { id: "quality_bar", label: "Quality bar", type: "select", options: ["low", "medium", "high"], default: "medium" },
+      { id: "baseline_minutes", label: "Baseline: staff minutes per conversation", type: "number", default: 8 },
+      { id: "baseline_rate", label: "Baseline: hourly rate (EUR)", type: "number", default: 55 },
+    ],
+  },
+  rag: {
+    label: "RAG / question answering on a corpus",
+    unit: "question",
+    bigT: "T(n·k)",
+    fields: [
+      { id: "q_per_day", label: "Questions per day", type: "number", default: 1000 },
+      { id: "user_words", label: "Question words", type: "number", default: 25 },
+      { id: "answer_words", label: "Answer words", type: "number", default: 120 },
+      { id: "language", label: "Language", type: "select", options: ["en", "nl", "fr", "de"], default: "nl" },
+      { id: "system_tokens", label: "System prompt S (tokens)", type: "number", default: 500 },
+      { id: "chunks", label: "Chunks per answer k", type: "number", default: 5 },
+      { id: "chunk_tokens", label: "Chunk size c (tokens)", type: "number", default: 400 },
+      { id: "corpus_pages", label: "Corpus size (pages)", type: "number", default: 50000 },
+      { id: "reindex_fraction", label: "Re-index per month (fraction)", type: "number", default: 0.05, step: 0.01 },
+      { id: "latency", label: "Latency requirement", type: "select", options: ["interactive", "background", "batch"], default: "interactive" },
+      { id: "retry_rate", label: "Retry rate", type: "number", default: 0.1, step: 0.01 },
+      { id: "success_rate", label: "Success rate q (groundedness)", type: "number", default: 0.85, step: 0.01 },
+      { id: "quality_bar", label: "Quality bar", type: "select", options: ["low", "medium", "high"], default: "medium" },
+      { id: "baseline_minutes", label: "Baseline: minutes to find the answer manually", type: "number", default: 10 },
+      { id: "baseline_rate", label: "Baseline: hourly rate (EUR)", type: "number", default: 55 },
+    ],
+  },
+  agentic: {
+    label: "Agentic workflow",
+    unit: "task",
+    bigT: "T(n·k·a)",
+    fields: [
+      { id: "tasks_per_day", label: "Tasks per day", type: "number", default: 100 },
+      { id: "steps", label: "Steps per task s", type: "number", default: 8 },
+      { id: "tools_per_step", label: "Tool calls per step m", type: "number", default: 2 },
+      { id: "tool_result_tokens", label: "Tool result size r (tokens)", type: "number", default: 800 },
+      { id: "step_output_tokens", label: "Model output per step (tokens)", type: "number", default: 300 },
+      { id: "system_tokens", label: "System prompt S (tokens)", type: "number", default: 1500 },
+      { id: "sub_agents", label: "Sub-agent depth d", type: "number", default: 1 },
+      { id: "sub_fraction", label: "Fraction of steps that delegate", type: "number", default: 0.3, step: 0.05 },
+      { id: "max_tokens_per_task", label: "Hard stop: max tokens per task (0 = none!)", type: "number", default: 200000 },
+      { id: "retry_rate", label: "Retry rate", type: "number", default: 0.25, step: 0.01 },
+      { id: "eval_fraction", label: "Automated eval calls (fraction)", type: "number", default: 0.2, step: 0.01 },
+      { id: "success_rate", label: "Success rate q", type: "number", default: 0.7, step: 0.01 },
+      { id: "quality_bar", label: "Quality bar (planner)", type: "select", options: ["low", "medium", "high"], default: "high" },
+      { id: "latency", label: "Latency requirement", type: "select", options: ["background", "interactive", "batch"], default: "background" },
+      { id: "baseline_minutes", label: "Baseline: manual minutes per task", type: "number", default: 45 },
+      { id: "baseline_rate", label: "Baseline: hourly rate (EUR)", type: "number", default: 70 },
+    ],
+  },
+  classification: {
+    label: "Classification / batch processing",
+    unit: "item",
+    bigT: "T(n)",
+    fields: [
+      { id: "items_per_day", label: "Items per day", type: "number", default: 20000 },
+      { id: "item_words", label: "Words per item", type: "number", default: 80 },
+      { id: "language", label: "Language", type: "select", options: ["en", "nl", "fr", "de"], default: "nl" },
+      { id: "system_tokens", label: "Prompt S incl. label set / few-shot (tokens)", type: "number", default: 1200 },
+      { id: "label_tokens", label: "Output tokens per item", type: "number", default: 8 },
+      { id: "batch", label: "Batch window ≥ 24h", type: "bool", default: true },
+      { id: "retry_rate", label: "Retry rate", type: "number", default: 0.05, step: 0.01 },
+      { id: "success_rate", label: "Success rate q (accuracy)", type: "number", default: 0.92, step: 0.01 },
+      { id: "quality_bar", label: "Quality bar", type: "select", options: ["low", "medium", "high"], default: "low" },
+      { id: "baseline_minutes", label: "Baseline: manual minutes per item", type: "number", default: 1 },
+      { id: "baseline_rate", label: "Baseline: hourly rate (EUR)", type: "number", default: 45 },
+    ],
+  },
+};
+
+export function defaultsFor(archetype) {
+  const out = {};
+  for (const f of ARCHETYPES[archetype].fields) out[f.id] = f.default;
+  return out;
+}
+
+const ceil = Math.ceil, max = Math.max, min = Math.min;
+
+// ---------- per-archetype token math (per unit) ----------
+function tokensDocument(p, cfg, sc) {
+  const tpw = cfg.defaults.tpw[p.language] * sc.tpw;
+  const wpp = cfg.defaults.wpp[p.doc_type];
+  const S = p.system_tokens;
+  const docTokens = p.pages * wpp * tpw;
+  let o = 0;
+  if (p.output_kind !== "summary") o += p.fields * cfg.defaults.tokens_per_field;
+  if (p.output_kind !== "extraction") o += p.summary_words * tpw;
+  const W = cfg.defaults.default_context_window;
+  const notes = [];
+  let input, output, chunks = 1;
+  if (docTokens + S + o <= W) {
+    input = S + docTokens; output = o;
+  } else {
+    const oc = cfg.defaults.o_chunk;
+    chunks = ceil(docTokens / (W - S - oc));
+    input = chunks * (S + docTokens / chunks) + (S + chunks * oc);
+    output = chunks * oc + o;
+    notes.push(`Document exceeds the context window: map-reduce in ${chunks} chunks (adds ${chunks} intermediate outputs).`);
+  }
+  return { input, output, cacheable: S * chunks, docTokens, chunks, notes, contextNeeded: chunks > 1 ? W : docTokens + S + o };
+}
+
+function tokensAssistant(p, cfg, sc) {
+  const tpw = cfg.defaults.tpw[p.language] * sc.tpw;
+  const u = p.user_words * tpw, o = p.answer_words * tpw, S = p.system_tokens, t = p.turns;
+  let history = 0;
+  for (let i = 1; i <= t; i++) {
+    const h = (i - 1) * (u + o);
+    history += p.history_max > 0 ? min(h, p.history_max) : h;
+  }
+  const quadratic = (u + o) * t * (t - 1) / 2;
+  let input = t * S + t * u + history;
+  const ragTokens = p.rag ? t * p.chunks * p.chunk_tokens : 0;
+  input += ragTokens;
+  const notes = [`Quadratic history term (full re-billing): ${Math.round(quadratic).toLocaleString()} tokens per conversation${p.history_max > 0 ? ` — capped to H_max=${p.history_max}` : ""}.`];
+  return { input, output: t * o, cacheable: t * S, notes, contextNeeded: S + (p.history_max > 0 ? p.history_max : (t - 1) * (u + o)) + u + (p.rag ? p.chunks * p.chunk_tokens : 0) + o, embeddingPerUnit: p.rag ? t * u : 0, quadratic };
+}
+
+function tokensRag(p, cfg, sc) {
+  const tpw = cfg.defaults.tpw[p.language] * sc.tpw;
+  const u = p.user_words * tpw, o = p.answer_words * tpw, S = p.system_tokens;
+  const input = S + u + p.chunks * p.chunk_tokens;
+  return { input, output: o, cacheable: S, notes: [], contextNeeded: input + o, embeddingPerUnit: u };
+}
+
+function tokensAgentic(p, cfg, sc) {
+  const s = max(1, Math.round(p.steps * sc.steps)), S = p.system_tokens;
+  const perStep = p.step_output_tokens + p.tools_per_step * p.tool_result_tokens;
+  let input = s * S + perStep * s * (s - 1) / 2;
+  let output = s * p.step_output_tokens;
+  const subMult = 1 + p.sub_agents * p.sub_fraction;
+  input *= subMult; output *= subMult;
+  const notes = [`Context grows per step: ${s} steps × (S + accumulated ${perStep} tokens/step) × sub-agent factor ${subMult.toFixed(2)}.`];
+  let capped = false;
+  if (p.max_tokens_per_task > 0 && input + output > p.max_tokens_per_task) {
+    const f = p.max_tokens_per_task / (input + output);
+    input *= f; output *= f; capped = true;
+    notes.push(`Hard stop reached in this scenario: task truncated at ${p.max_tokens_per_task.toLocaleString()} tokens — expect lower success rate.`);
+  }
+  if (p.max_tokens_per_task <= 0) notes.push("No hard stop: cost per task is unbounded — T(∞). Set a max tokens per task before this goes to production.");
+  return { input, output, cacheable: s * S, notes, contextNeeded: S + perStep * (s - 1), steps: s, capped, unbounded: p.max_tokens_per_task <= 0 };
+}
+
+function tokensClassification(p, cfg, sc) {
+  const tpw = cfg.defaults.tpw[p.language] * sc.tpw;
+  const item = p.item_words * tpw, S = p.system_tokens;
+  return { input: S + item, output: p.label_tokens, cacheable: S, notes: [], contextNeeded: S + item + p.label_tokens };
+}
+
+const TOKENS = { document: tokensDocument, assistant: tokensAssistant, rag: tokensRag, agentic: tokensAgentic, classification: tokensClassification };
+const UNITS_PER_DAY = { document: "docs_per_day", assistant: "conv_per_day", rag: "q_per_day", agentic: "tasks_per_day", classification: "items_per_day" };
+
+// ---------- scenario helpers ----------
+function attempts(p, cfg, sc) {
+  const base = 1 + (p.retry_rate ?? 0) + (p.eval_fraction ?? 0);
+  if (sc.a_override != null) return sc.a_override;
+  return base * (sc.a_mult ?? 1);
+}
+function cacheHit(cfg, sc) {
+  return min(0.95, max(0, cfg.defaults.cache_hit_system_prompt + (sc.h_delta ?? 0)));
+}
+
+// ---------- model selection ----------
+export function selectModel(models, { quality_bar, latency, contextNeeded, inShare = 0.8 }, cfg) {
+  if (!models || !models.length) return { recommended: null, defaultAlternative: null, candidates: [], note: "No model data loaded — enter prices manually." };
+  const thr = cfg.defaults.quality_thresholds[quality_bar ?? "medium"];
+  const minTps = cfg.defaults.latency_min_tps[latency ?? "batch"];
+  const priced = models.filter(m => m.usd_per_1m_input != null && m.usd_per_1m_output != null);
+  const cands = priced.filter(m => (m.intelligence_index ?? -1) >= thr && (minTps === 0 || (m.output_tokens_per_sec ?? 0) >= minTps));
+  const weighted = m => m.usd_per_1m_input * inShare + m.usd_per_1m_output * (1 - inShare);
+  const sorted = [...cands].sort((a, b) => weighted(a) - weighted(b));
+  const smartest = [...priced].sort((a, b) => (b.intelligence_index ?? 0) - (a.intelligence_index ?? 0))[0] || null;
+  return {
+    recommended: sorted[0] || null,
+    defaultAlternative: smartest,
+    candidates: sorted.slice(0, 8),
+    threshold: thr, minTps,
+    note: `Cheapest model with intelligence index ≥ ${thr}${minTps ? ` and ≥ ${minTps} tokens/s` : ""}. Context window not in free-tier data — verify ≥ ${Math.round(contextNeeded * cfg.defaults.context_margin).toLocaleString()} tokens.`,
+  };
+}
+
+// ---------- BOM ----------
+function bom(archetype, p, cfg, month, extra) {
+  const D = cfg.defaults.working_days;
+  const units = p[UNITS_PER_DAY[archetype]] * D;
+  const rows = [];
+  const add = (component, role, sku_hint, quantity, unit, source, condition = true) => { if (condition) rows.push({ component, role, sku_hint, quantity: quantity < 100 ? Math.round(quantity * 100) / 100 : Math.round(quantity), unit, source }); };
+  add("Azure OpenAI / AI Foundry model deployment", "inference", month.ptuSignal ? "PAYG now; evaluate PTU at Run" : "PAYG", month.input + month.cached + month.output, "tokens/month (see token_profile)", "token_profile");
+  if (archetype === "document") {
+    add("Azure OpenAI Batch API", "discounted inference", "Global Batch", month.input + month.output, "tokens/month", "batch=true", !!p.batch);
+    add("Azure AI Document Intelligence", "OCR", "Read / Layout", units * p.pages, "pages/month", "docs × pages", !!p.scanned);
+    add("Blob Storage", "document store", "Hot LRS", units * cfg.defaults.avg_doc_mb / 1024, "GB/month (retention 1 month)", "docs × avg_doc_mb");
+    add("Azure Functions", "orchestration", "Consumption", units * (extra.chunks || 1), "executions/month", "docs × chunks");
+  }
+  if (archetype === "assistant" || archetype === "rag") {
+    const turns = archetype === "assistant" ? p.turns : 1;
+    add("Embeddings model", "query embedding + (re)indexing", "text-embedding", extra.embeddingMonth, "tokens/month", "queries × u + reindex × corpus", !!(p.rag ?? true));
+    const chunksIdx = (p.corpus_pages * cfg.defaults.wpp.prose * cfg.defaults.tpw.en) / (p.chunk_tokens || cfg.defaults.chunk_tokens);
+    add("Azure AI Search (vector index)", "retrieval", chunksIdx > 2e6 ? "Standard S2+" : chunksIdx > 3e5 ? "Standard S1" : "Basic", chunksIdx * (cfg.defaults.vector_dims * 4 + p.chunk_tokens * 4) / 1e9, "GB index (≈ chunks × (dims×4B + text))", "corpus_pages", !!(p.rag ?? true));
+    add("App Service / Container Apps", "chat backend", "P1v3 (size on peak sessions)", units * turns, "requests/month", "units × turns");
+    add("API Management (gateway)", "identity per use case, token logging", "Standard v2", units * turns, "requests/month", "units × turns");
+    add("Guardrail / moderation model calls", "safety", "small model", units * turns * cfg.defaults.guardrail_fraction, "calls/month", "guardrail_fraction", !!p.guardrails);
+  }
+  if (archetype === "agentic") {
+    add("Second model deployment (worker)", "cheap worker model for tool steps", "small model", month.output, "tokens/month (share of output)", "planner/worker split — refine");
+    add("API Management (gateway)", "per-task identity + token budget", "Standard v2", units * (extra.steps || p.steps) * (1 + p.tools_per_step), "requests/month", "tasks × steps × (1 + tools)");
+    add("Container Apps / Durable Functions", "orchestration", "Consumption", units, "task runs/month", "tasks");
+    add("Service Bus / Storage Queue", "task queue", "Standard", units, "messages/month", "tasks");
+    add("Eval model calls", "automated quality checks", "small model", units * (p.eval_fraction ?? 0), "calls/month", "eval_fraction");
+  }
+  if (archetype === "classification") {
+    add("Azure OpenAI Batch API", "discounted inference", "Global Batch", month.input + month.output, "tokens/month", "batch=true", !!p.batch);
+    add("Azure Functions", "orchestration", "Consumption", units / 1000, "batch jobs/month (1k items per job)", "items / 1000");
+    add("Blob Storage", "input/output store", "Hot LRS", units * 0.002, "GB/month", "items × 2 KB");
+  }
+  add("Log Analytics", "observability (usage + cost + quality per request)", "PAYG", units * (extra.requestsPerUnit || 1) * cfg.defaults.log_kb_per_request / 1e6, "GB/month", "requests × log_kb");
+  return rows;
+}
+
+// ---------- main ----------
+export function computeScenario(archetype, params, cfg, scenarioName, models, priceOverride) {
+  const sc = cfg.scenarios[scenarioName];
+  const p = { ...defaultsFor(archetype), ...params };
+  const T = TOKENS[archetype](p, cfg, sc);
+  const D = cfg.defaults.working_days;
+  const unitsPerDay = p[UNITS_PER_DAY[archetype]];
+  const a = attempts(p, cfg, sc);
+  const h = cacheHit(cfg, sc);
+  const unitsMonth = unitsPerDay * D;
+  const attemptsMonth = unitsMonth * a;
+  const cached = h * T.cacheable * attemptsMonth;
+  const input = T.input * attemptsMonth - cached;
+  const output = T.output * attemptsMonth;
+  const batchFactor = p.batch ? cfg.defaults.batch_factor : 1;
+  const ptuSignal = input + cached + output >= cfg.defaults.ptu_breakeven_tokens_month;
+
+  const sel = selectModel(models, { quality_bar: p.quality_bar, latency: p.latency, contextNeeded: T.contextNeeded, inShare: input / max(1, input + output) }, cfg);
+  const model = priceOverride || sel.recommended;
+  let modelCostUsd = null, priceSource = "none";
+  if (model) {
+    const pin = model.usd_per_1m_input, pout = model.usd_per_1m_output, pc = model.usd_per_1m_cache_hit ?? pin;
+    modelCostUsd = ((input * pin + cached * pc + output * pout) / 1e6) * batchFactor;
+    priceSource = priceOverride ? "manual" : "artificial-analysis";
+  }
+  const embeddingMonth = (T.embeddingPerUnit || 0) * attemptsMonth + (p.reindex_fraction && p.corpus_pages ? p.reindex_fraction * p.corpus_pages * cfg.defaults.wpp.prose * cfg.defaults.tpw[p.language || "en"] : 0);
+  const embeddingUsd = (archetype === "assistant" && !p.rag) ? 0 : embeddingMonth / 1e6 * cfg.defaults.embedding_usd_per_1m;
+
+  const outcomes = unitsMonth * p.success_rate;
+  const fx = cfg.defaults.usd_to_eur;
+  const modelCostEur = modelCostUsd == null ? null : (modelCostUsd + embeddingUsd) * fx;
+  const cpoModel = modelCostEur == null ? null : modelCostEur / outcomes;
+  const baselineEur = (p.baseline_minutes / 60) * p.baseline_rate;
+
+  const month = { input: Math.round(input), cached: Math.round(cached), output: Math.round(output), attempts: attemptsMonth, units: unitsMonth, ptuSignal };
+  const extra = { chunks: T.chunks, steps: T.steps, embeddingMonth, requestsPerUnit: archetype === "assistant" ? p.turns : archetype === "agentic" ? (T.steps || p.steps) : 1 };
+  return {
+    scenario: scenarioName,
+    assumptions: { a: +a.toFixed(3), h: +h.toFixed(2), q: p.success_rate, D, tpw_factor: sc.tpw, batch_factor: batchFactor },
+    per_unit: { input: Math.round(T.input), output: Math.round(T.output), cacheable: Math.round(T.cacheable), context_needed: Math.round(T.contextNeeded) },
+    month,
+    model: { selection: sel, used: model ? { name: model.name, slug: model.slug, usd_per_1m_input: model.usd_per_1m_input, usd_per_1m_output: model.usd_per_1m_output, usd_per_1m_cache_hit: model.usd_per_1m_cache_hit ?? null, intelligence_index: model.intelligence_index ?? null } : null, price_source: priceSource },
+    cost: { model_usd_month: modelCostUsd == null ? null : +modelCostUsd.toFixed(2), embedding_usd_month: +embeddingUsd.toFixed(2), model_eur_month: modelCostEur == null ? null : +modelCostEur.toFixed(2), cost_per_outcome_eur: cpoModel == null ? null : +cpoModel.toFixed(4), baseline_per_outcome_eur: +baselineEur.toFixed(2), outcomes_month: Math.round(outcomes) },
+    bom: bom(archetype, p, cfg, month, extra),
+    notes: T.notes,
+    flags: { ptu_signal: ptuSignal, unbounded: !!T.unbounded, capped: !!T.capped },
+  };
+}
+
+export function compute(archetype, params, cfg, models, priceOverride) {
+  const scenarios = {};
+  for (const s of ["low", "base", "high"]) scenarios[s] = computeScenario(archetype, params, cfg, s, models, priceOverride);
+  return { archetype, label: ARCHETYPES[archetype].label, unit: ARCHETYPES[archetype].unit, bigT: ARCHETYPES[archetype].bigT, params: { ...defaultsFor(archetype), ...params }, scenarios };
+}
+
+// ---------- export formats ----------
+export function toBomJson(result, meta = {}) {
+  const b = result.scenarios.base;
+  return {
+    use_case: { name: meta.name || "", archetype: result.archetype, outcome_unit: meta.outcome_unit || result.unit, count_source: meta.count_source || "", quality_floor: meta.quality_floor || "", bigT: result.bigT },
+    assumptions: b.assumptions,
+    token_profile_month: { low: result.scenarios.low.month, base: b.month, high: result.scenarios.high.month },
+    model: b.model.used ? { ...b.model.used, quality_bar: result.params.quality_bar, latency: result.params.latency || "batch", context_needed: b.per_unit.context_needed, note: b.model.selection.note } : { note: b.model.selection.note },
+    bom: b.bom,
+    cost_per_outcome_eur: { low: result.scenarios.low.cost.cost_per_outcome_eur, base: b.cost.cost_per_outcome_eur, high: result.scenarios.high.cost.cost_per_outcome_eur, baseline: b.cost.baseline_per_outcome_eur, note: "Model + embedding cost only; infra from Azure estimator, labour from ledger." },
+    flags: b.flags, notes: b.notes,
+    generated: new Date().toISOString().slice(0, 10), spec_version: "0.1",
+    attribution: "Model prices: Artificial Analysis (https://artificialanalysis.ai). Formulas: Costra AI Use-Case Capture spec v0.1.",
+  };
+}
+
+export function toArchitectureMarkdown(result, meta = {}) {
+  const b = result.scenarios.base, j = toBomJson(result, meta);
+  const fmt = n => n == null ? "—" : Math.round(n).toLocaleString();
+  const L = [];
+  L.push(`# ${meta.name || "AI use case"} — architecture & volumes for cost estimation`, "");
+  L.push(`Archetype: **${result.label}** · unit: ${result.unit} · Big-T: ${result.bigT} · generated ${j.generated}`, "");
+  L.push(`## Volumes (base scenario, per month)`, "", `- Units: ${fmt(b.month.units)} ${result.unit}s (${fmt(b.month.attempts)} attempts, a = ${b.assumptions.a})`);
+  L.push(`- Tokens: ${fmt(b.month.input)} input (uncached), ${fmt(b.month.cached)} cached input, ${fmt(b.month.output)} output`);
+  L.push(`- Context needed per request: ~${fmt(b.per_unit.context_needed)} tokens`, "");
+  if (b.model.used) L.push(`## Model`, "", `- ${b.model.used.name} (AA intelligence ${b.model.used.intelligence_index ?? "—"}); list price ${b.model.used.usd_per_1m_input}/${b.model.used.usd_per_1m_output} USD per 1M in/out`, `- ${b.model.selection.note}`, "");
+  L.push(`## Components (BOM)`, "", "| Component | Role | SKU hint | Quantity | Unit |", "|---|---|---|---:|---|");
+  for (const r of b.bom) L.push(`| ${r.component} | ${r.role} | ${r.sku_hint} | ${fmt(r.quantity)} | ${r.unit} |`);
+  L.push("", `## Assumptions`, "", `- tokens/word factor ${b.assumptions.tpw_factor}, cache hit ${b.assumptions.h}, success rate ${b.assumptions.q}, working days ${b.assumptions.D}, batch factor ${b.assumptions.batch_factor}`);
+  for (const n of b.notes) L.push(`- ${n}`);
+  L.push("", `## Cost per outcome (model + embeddings only, EUR)`, "", `low ${j.cost_per_outcome_eur.low ?? "—"} · base ${j.cost_per_outcome_eur.base ?? "—"} · high ${j.cost_per_outcome_eur.high ?? "—"} · baseline today ${j.cost_per_outcome_eur.baseline}`, "");
+  L.push(`Region and SKU sizing to be priced with the Azure estimator. ${j.attribution}`);
+  return L.join("\n");
+}
