@@ -1,5 +1,9 @@
 {
   "headers": [
     { "source": "/(.*)", "headers": [ { "key": "X-Robots-Tag", "value": "noindex" } ] }
+  ],
+  "redirects": [
+    { "source": "/", "destination": "https://ai-llm-fitness.vercel.app/", "permanent": false },
+    { "source": "/index.html", "destination": "https://ai-llm-fitness.vercel.app/", "permanent": false }
   ]
 }
