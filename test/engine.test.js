@@ -89,3 +89,11 @@ test("task-fit deep link carries workload, quality bar and tokenomics inputs", a
   assert.ok(+q.get("in") > 0 && +q.get("out") > 0);
   assert.equal(u.hash, "#tokenomics");
 });
+
+test("task-fit ranking: bulk profile prefers cheap-and-fast above the intelligence floor", async () => {
+  const { taskFitRank } = await import("../public/engine.js");
+  const ms = models.map(m => ({ ...m, usd_per_1m_blended_3to1: (3 * m.usd_per_1m_input + m.usd_per_1m_output) / 4, ttft_sec: 0.5, coding_index: 50, agentic_index: 50, cost_per_task_usd: m.usd_per_1m_output / 100 }));
+  const r = taskFitRank(ms, { profile: "bulk", minInt: 50, inTokens: 1e8, outTokens: 1e7, cachedTokens: 0 });
+  assert.equal(r.rows[0].slug, "mid");             // cheap is below the floor, top is expensive and slow
+  assert.ok(r.rows[0].monthly < r.rows[1].monthly);
+});

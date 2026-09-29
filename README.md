@@ -43,6 +43,8 @@ python3 -m http.server 8765 --directory public   # UI zonder modeldata: prijzen 
 ## Hand-off naar LLM Task-Fit en de Azure estimator
 "Open in LLM Task-Fit →" opent de AA-app met profiel, maandworkload (in/out/cache), minimum-intelligentie en de Tokenomics-inputs (tasks, calls per task, agent depth, tokens per call, success rate) in de URL; de AA-app vult ze in en toont een banner. Zo kiest Task-Fit het model op de échte workload, en rekent de Tokenomics-tab de hefbomen door. URL van de AA-app: `links.taskfit_url` in `public/config.json`.
 
+Zonder de app te verlaten: "Consult LLM Task-Fit" (onder de prijsvelden) rangschikt de modellen voor déze workload met dezelfde Task-Fit-score (profielgewichten, log-schaling voor prijs en snelheid — geport in `engine.js`), toont index, tok/s, prijzen en maandkost, en "Use" vult de prijs per 1M in.
+
 En terug: in de Tokenomics-tab van Task-Fit stuurt "Use this model in AI Use-Case Capture →" de lijstprijzen (USD per 1M input / output / cached) van het gekozen model terug naar de capture, die de beschreven use case in de browser bewaart (localStorage) en meteen herrekent met die prijs.
 
 "Download architecture.md" of "Copy markdown" → dat is het architectuurdocument dat de azure-estimator-skill inleest (componenten, SKU-hints, volumes, aannames). `bom.json` is het machine-leesbare equivalent en landt later als estimate-regels in de use-case ledger.

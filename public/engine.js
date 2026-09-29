@@ -384,3 +384,41 @@ export function toTaskFitUrl(result, cfg, meta = {}) {
   const base = (cfg.links && cfg.links.taskfit_url) || "https://artificial-analysis-mcp.vercel.app/";
   return base.replace(/\/?$/, "/") + "?" + toTaskFitParams(result, cfg, meta) + "#tokenomics";
 }
+
+// ---------- Task-Fit ranking, ported from the LLM Task-Fit app (same metrics, scaling and profile weights) ----------
+export const TASKFIT_METRICS = [
+  { key: "intelligence_index", scale: "lin", dir: 1 }, { key: "coding_index", scale: "lin", dir: 1 }, { key: "agentic_index", scale: "lin", dir: 1 },
+  { key: "usd_per_1m_blended_3to1", scale: "log", dir: -1 }, { key: "cost_per_task_usd", scale: "log", dir: -1 },
+  { key: "output_tokens_per_sec", scale: "log", dir: 1 }, { key: "ttft_sec", scale: "log", dir: -1 },
+];
+export const TASKFIT_PROFILES = {
+  chat: { name: "Customer service", w: { intelligence_index: 15, agentic_index: 15, usd_per_1m_blended_3to1: 25, output_tokens_per_sec: 15, ttft_sec: 30 } },
+  code: { name: "Coding assistant", w: { coding_index: 45, agentic_index: 20, intelligence_index: 10, cost_per_task_usd: 15, output_tokens_per_sec: 10 } },
+  agent: { name: "Agentic workflows", w: { agentic_index: 40, intelligence_index: 25, cost_per_task_usd: 25, output_tokens_per_sec: 10 } },
+  bulk: { name: "Bulk processing", w: { usd_per_1m_blended_3to1: 60, output_tokens_per_sec: 20, intelligence_index: 20 } },
+  analysis: { name: "Complex analysis", w: { intelligence_index: 60, cost_per_task_usd: 20, agentic_index: 10, usd_per_1m_blended_3to1: 10 } },
+};
+export function taskFitRank(models, { profile = "bulk", minInt = 0, inTokens = 0, outTokens = 0, cachedTokens = 0, limit = 8 } = {}) {
+  const w = (TASKFIT_PROFILES[profile] || TASKFIT_PROFILES.bulk).w;
+  const ranges = {};
+  for (const m of TASKFIT_METRICS) {
+    const vals = models.map(x => x[m.key]).filter(v => v != null && (m.scale !== "log" || v > 0));
+    if (!vals.length) continue;
+    const t = m.scale === "log" ? vals.map(Math.log) : vals;
+    ranges[m.key] = { min: Math.min(...t), max: Math.max(...t) };
+  }
+  const scaled = (model, m) => { const v = model[m.key], r = ranges[m.key]; if (v == null || !r || (m.scale === "log" && v <= 0)) return null; const t = m.scale === "log" ? Math.log(v) : v; if (r.max === r.min) return 100; const s = (t - r.min) / (r.max - r.min) * 100; return m.dir === 1 ? s : 100 - s; };
+  const rows = [];
+  for (const m of models) {
+    if (minInt && (m.intelligence_index ?? -1) < minInt) continue;
+    let sum = 0, wsum = 0, missing = 0;
+    for (const met of TASKFIT_METRICS) { const wt = w[met.key] || 0; if (!wt) continue; const s = scaled(m, met); if (s == null) { missing++; continue; } sum += s * wt; wsum += wt; }
+    if (!wsum) continue;
+    const priced = m.usd_per_1m_input != null && m.usd_per_1m_output != null;
+    const monthly = priced ? (inTokens * m.usd_per_1m_input + cachedTokens * (m.usd_per_1m_cache_hit ?? m.usd_per_1m_input) + outTokens * m.usd_per_1m_output) / 1e6 : null;
+    rows.push({ ...m, fit: sum / wsum, partial: missing > 0, monthly });
+  }
+  rows.sort((a, b) => b.fit - a.fit);
+  return { profile: (TASKFIT_PROFILES[profile] || TASKFIT_PROFILES.bulk).name, rows: rows.slice(0, limit), total: rows.length };
+}
+export const TASKFIT_PROFILE_OF = { document: "bulk", classification: "bulk", assistant: "chat", rag: "chat", agentic: "agent" };
