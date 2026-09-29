@@ -1,6 +1,6 @@
 // POST /api/auth  {email, password}  → { session, email, expires }     (login)
 // GET  /api/auth  (Bearer session)   → { email, exp }                   (who am I)
-import { verifyPassword, signSession, credentialFrom, json } from "../lib/auth.js";
+import { verifyPassword, signSession, credentialFrom, parseUsers, json } from "../lib/auth.js";
 
 const attempts = new Map(); // ip → { n, at }  — crude brute-force brake per instance
 function throttled(ip) {
@@ -17,11 +17,13 @@ export async function POST(req) {
   const r = verifyPassword(body.email, body.password);
   if (!r.ok) { const a = attempts.get(ip); a.n++; return json({ error: r.expired ? r.reason : "Invalid email or password." }, 401); }
   attempts.delete(ip);
-  return json({ session: signSession(r.email), email: r.email, expires: r.expires });
+  try { return json({ session: signSession(r.email), email: r.email, expires: r.expires }); }
+  catch (e) { return json({ error: "Server not configured: " + e.message }, 500); }
 }
 
 export async function GET(req) {
   const c = credentialFrom(req);
-  if (!c.session) return json({ error: "unauthorized" }, 401);
+  // unauthenticated: a harmless config check (is the server set up?) so a failing login can be diagnosed
+  if (!c.session) return json({ error: "unauthorized", configured: { users: parseUsers().length, secret: !!process.env.AUTH_SECRET } }, 401);
   return json({ email: c.session.email, exp: c.session.exp });
 }
