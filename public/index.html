@@ -108,7 +108,7 @@
       <h2>Model &amp; price</h2>
       <div class="step"><span class="n">1</span><div>
         <div class="lbl" style="margin-top:0"><span>Fetch model data</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Loads the model list (prices per 1M tokens, intelligence index, speed) from Artificial Analysis through the Costra MCP. Cached for 6 hours on the server. Needs this deployment's access token.</span></span></div>
-        <div class="row" style="grid-template-columns:1fr auto"><input id="token" placeholder="access token (CAPTURE_TOKEN)" type="password"><button id="loadModels" class="primary" style="width:auto">Fetch models</button></div>
+        <div class="row" style="grid-template-columns:1fr auto"><input id="token" placeholder="access token (same as the LLM Task-Fit app)" type="password"><button id="loadModels" class="primary" style="width:auto">Fetch models</button></div>
         <div class="help" style="margin-top:4px">Remembered in this browser after the first fetch; open the app once with <code>?token=…</code> to preload it. <button type="button" class="linkbtn" id="forgetToken">Forget token</button></div>
         <div id="fetchStatus" class="status">No model data yet — fetch to get the ranked list. Or skip and enter prices manually below.</div>
       </div></div>
@@ -227,7 +227,7 @@ async function loadModels() {
     $("modelPick").value = pick && opts.includes(pick) ? pick : (opts[0] || "");
     $("modelPick").dispatchEvent(new Event("change"));
   } catch (e) {
-    const msg = /401|unauthorized/i.test(e.message) ? "Access token rejected (401) — check CAPTURE_TOKEN in Vercel and redeploy." : /AA_MCP/.test(e.message) ? "Server is missing AA_MCP_URL / AA_MCP_TOKEN — set them in Vercel and redeploy." : /upstream/.test(e.message) ? "The Artificial Analysis app refused the request — check AA_MCP_TOKEN." : "Models unavailable: " + e.message;
+    const msg = /401|unauthorized/i.test(e.message) ? "Access token rejected (401) — use the same token as the LLM Task-Fit app, or check AA_MCP_TOKEN / CAPTURE_TOKEN in Vercel and redeploy." : /AA_MCP/.test(e.message) ? "Server is missing AA_MCP_URL / AA_MCP_TOKEN — set them in Vercel and redeploy." : /upstream/.test(e.message) ? "The Artificial Analysis app refused the request — check AA_MCP_TOKEN." : "Models unavailable: " + e.message;
     setStatus(msg, "err"); modelsError = msg; refreshModelPick();
   }
 }

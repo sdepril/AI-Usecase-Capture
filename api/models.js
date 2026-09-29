@@ -1,19 +1,20 @@
 // Proxy to the Artificial Analysis MCP deployment (sdepril/artificial-analysis-mcp).
 // Keeps the AA MCP token server-side; caches 6h so the free-tier budget is untouched by this app.
-// Env: AA_MCP_URL (e.g. https://artificial-analysis-mcp.vercel.app), AA_MCP_TOKEN, CAPTURE_TOKEN (this app's own access token).
+// Env: AA_MCP_URL (e.g. https://artificial-analysis-mcp.vercel.app), AA_MCP_TOKEN (also accepted as this app's access token), CAPTURE_TOKEN (optional separate token).
 import { timingSafeEqual } from "node:crypto";
 
 const TTL_MS = 6 * 60 * 60 * 1000;
 let cache = null; // { at, body }
 
+// Access: CAPTURE_TOKEN if set; otherwise the same token as the AA app (AA_MCP_TOKEN), so one token opens both apps.
 function authorized(req) {
-  const expected = process.env.CAPTURE_TOKEN;
-  if (!expected) return false;
   const url = new URL(req.url);
   const auth = req.headers.get("authorization") || "";
   const given = url.searchParams.get("token") || (auth.startsWith("Bearer ") ? auth.slice(7) : "");
-  const a = Buffer.from(given), b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  if (!given) return false;
+  const accepted = [process.env.CAPTURE_TOKEN, process.env.AA_MCP_TOKEN].filter(Boolean);
+  const a = Buffer.from(given);
+  return accepted.some((exp) => { const b = Buffer.from(exp); return a.length === b.length && timingSafeEqual(a, b); });
 }
 
 export async function GET(req) {

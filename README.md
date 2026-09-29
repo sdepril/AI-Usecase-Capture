@@ -36,9 +36,9 @@ python3 -m http.server 8765 --directory public   # UI zonder modeldata: prijzen 
 1. Vercel → Add New → Project → Import `sdepril/AI-Usecase-Capture` (preset *Other*, geen build command).
 2. Environment Variables (Production):
    - `AA_MCP_URL` — productie-URL van je artificial-analysis-mcp (bv. `https://artificial-analysis-mcp.vercel.app`)
-   - `AA_MCP_TOKEN` — de `MCP_TOKEN` van die deployment
-   - `CAPTURE_TOKEN` — eigen toegangstoken voor deze app (`openssl rand -hex 24`)
-3. Deploy. Open `https://<domein>/?token=<CAPTURE_TOKEN>` → "Load models".
+   - `AA_MCP_TOKEN` — de `MCP_TOKEN` van die deployment; **dit token opent ook deze app**
+   - `CAPTURE_TOKEN` — optioneel: een apart token voor deze app als je die niet wil delen met de AA-app
+3. Deploy. Open `https://<domein>/?token=<token>` één keer; daarna onthoudt de browser het en fetcht de app de modellen automatisch.
 
 ## Hand-off naar LLM Task-Fit en de Azure estimator
 "Open in LLM Task-Fit →" opent de AA-app met profiel, maandworkload (in/out/cache), minimum-intelligentie en de Tokenomics-inputs (tasks, calls per task, agent depth, tokens per call, success rate) in de URL; de AA-app vult ze in en toont een banner. Zo kiest Task-Fit het model op de échte workload, en rekent de Tokenomics-tab de hefbomen door. URL van de AA-app: `links.taskfit_url` in `public/config.json`.
