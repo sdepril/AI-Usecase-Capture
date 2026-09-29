@@ -17,6 +17,7 @@
   header .sub { color:var(--muted); font-size:12.5px; max-width:640px }
   header .right { margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted) }
   .explain { margin:0 28px 6px; background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:10px 16px } .explain summary { cursor:pointer; font-weight:600; color:var(--ink) } .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:8px } .row3 p { margin:4px 0 0; color:var(--muted); font-size:12.5px } @media (max-width:900px){ .row3 { grid-template-columns:1fr } }
+  [hidden] { display:none !important }
   main { display:grid; grid-template-columns: 380px 1fr; gap:22px; padding:8px 28px 40px; max-width:1500px }
   @media (max-width: 900px) { main { grid-template-columns:1fr } }
   .panel { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:18px }
@@ -31,17 +32,18 @@
   .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px } .btns button { width:auto; border-radius:999px }
   .scen { display:grid; grid-template-columns:repeat(3,1fr); gap:12px }
   .sc { border-radius:var(--r); padding:14px; background:var(--soft); color:var(--ink) }
-  .sc.base { background:linear-gradient(180deg, var(--navy) 0%, var(--navy2) 100%); color:#fff }
-  .sc h3 { margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600 } .sc.base h3 { color:rgba(255,255,255,.6) }
-  .big { font-size:26px; font-weight:600; line-height:1.1 } .sc.base .big { color:#fff }
-  .big small { font-size:12px; font-weight:400; color:var(--muted); font-family:Inter } .sc.base .big small { color:rgba(255,255,255,.6) }
-  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; margin-top:8px } .kv span:nth-child(odd) { color:var(--muted) } .sc.base .kv span:nth-child(odd) { color:rgba(255,255,255,.6) }
-  .sc .help { color:var(--muted) } .sc.base .help { color:rgba(255,255,255,.7) }
+  .sc { cursor:pointer; transition:transform .12s, box-shadow .12s } .sc:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(13,36,67,.10) } .sc.active { background:linear-gradient(180deg, var(--navy) 0%, var(--navy2) 100%); color:#fff }
+  .sc h3 { margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600 } .sc.active h3 { color:rgba(255,255,255,.6) }
+  .big { font-size:26px; font-weight:600; line-height:1.1 } .sc.active .big { color:#fff }
+  .big small { font-size:12px; font-weight:400; color:var(--muted); font-family:Inter } .sc.active .big small { color:rgba(255,255,255,.6) }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; margin-top:8px } .kv span:nth-child(odd) { color:var(--muted) } .sc.active .kv span:nth-child(odd) { color:rgba(255,255,255,.6) }
+  .sc .help { color:var(--muted) } .sc.active .help { color:rgba(255,255,255,.7) }
   table { width:100%; border-collapse:collapse; font-size:12.5px } th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top } th { color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.06em } td.num { text-align:right; font-variant-numeric:tabular-nums }
   .note { background:var(--soft); border-radius:10px; padding:8px 12px; font-size:12.5px; margin-top:8px }
   .note.warn { background:#FDECE4; color:#7C2D12 }
   .pill { display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; background:var(--accent); color:#fff; font-weight:600 }
   .stack > * + * { margin-top:16px }
+  .gate { max-width:420px; margin:10vh auto; padding:0 16px } .gate .panel { padding:22px }
   .linkbtn { background:none; border:0; padding:0; width:auto; color:var(--accent); font:inherit; font-size:11px; cursor:pointer; text-decoration:underline }
   code { font-size:11px; background:var(--soft); padding:0 4px; border-radius:4px }
   .modelbox { border:1px solid var(--accent); border-radius:var(--r); padding:14px; background:#fff }
@@ -82,16 +84,25 @@
 <header>
   <a class="logo" href="https://costra.io" target="_blank" rel="noopener"><img src="logo.png" alt="Costra" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://costra.io/__l5e/assets-v1/ccb6e6f5-eb43-4485-89b4-b1b834955424/Logo-black.png'}else{this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'COSTRA'}))}"></a><h1>AI Use-Case Capture</h1>
   <span class="sub">describe the use case → token profile · model class · Big-T · BOM for the Azure estimator · cost per valued outcome (low / base / high)</span>
-  <div class="right"><span id="modelsStatus">no model data</span></div>
+  <div class="right"><span id="modelsStatus">no model data</span><span id="who" class="help"></span><button id="signout" class="ghost" style="width:auto;display:none">Sign out</button></div>
 </header>
-<details class="explain"><summary>How this works</summary>
+<section id="gate" class="gate" hidden>
+  <form id="gateForm" class="panel">
+    <h2 style="color:var(--ink);font-size:16px;text-transform:none;letter-spacing:0">Sign in</h2>
+    <p class="help" style="margin:0 0 8px">Costra tools · same login as LLM Task-Fit.</p>
+    <label>Email<input id="g_email" type="email" autocomplete="username" required></label>
+    <label>Password<input id="g_pw" type="password" autocomplete="current-password" required></label>
+    <div class="btns"><button class="primary" type="submit" style="width:auto">Sign in</button><span id="gateErr" class="help" style="align-self:center;color:#B42318"></span></div>
+  </form>
+</section>
+<details class="explain" hidden><summary>How this works</summary>
   <div class="row3">
     <div><b>1 · Describe</b><p>Pick an archetype and answer the questions. Every field has a one-line explanation and a default you should override with what you actually know.</p></div>
     <div><b>2 · Deterministic maths</b><p>Tokens per unit → tokens per month → model cost, with three scenarios (low / base / high) that vary tokens-per-word, retries and cache hit. No LLM guesses a number.</p></div>
     <div><b>3 · Model, BOM, outcome</b><p>The cheapest model above your quality bar (Artificial Analysis), a bill of materials with volumes for the Azure estimator, and cost per valued outcome next to what it costs today. "Open in LLM Task-Fit" hands the workload to the model-ranking app; the BOM markdown goes to the Azure estimator for infra pricing.</p></div>
   </div>
 </details>
-<main>
+<main hidden>
   <section class="panel stack">
     <div>
       <h2>Use case</h2>
@@ -107,10 +118,9 @@
     <div class="modelbox">
       <h2>Model &amp; price</h2>
       <div class="step"><span class="n">1</span><div>
-        <div class="lbl" style="margin-top:0"><span>Fetch model data</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Loads the model list (prices per 1M tokens, intelligence index, speed) from Artificial Analysis through the Costra MCP. Cached for 6 hours on the server. Needs this deployment's access token.</span></span></div>
-        <div class="row" style="grid-template-columns:1fr auto"><input id="token" placeholder="access token (same as the LLM Task-Fit app)" type="password"><button id="loadModels" class="primary" style="width:auto">Fetch models</button></div>
-        <div class="help" style="margin-top:4px">Remembered in this browser after the first fetch; open the app once with <code>?token=…</code> to preload it. <button type="button" class="linkbtn" id="forgetToken">Forget token</button></div>
-        <div id="fetchStatus" class="status">No model data yet — fetch to get the ranked list. Or skip and enter prices manually below.</div>
+        <div class="lbl" style="margin-top:0"><span>Fetch model data</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Loads the model list (prices per 1M tokens, intelligence index, speed) from Artificial Analysis through the Costra MCP. Cached for 6 hours on the server. Uses your sign-in.</span></span></div>
+        <div class="row" style="grid-template-columns:1fr auto"><div id="fetchStatus" class="status" style="margin:0;align-self:center">No model data yet.</div><button id="loadModels" class="primary" style="width:auto">Fetch models</button></div>
+        <div class="help" style="margin-top:4px">Fetched automatically after sign-in; refresh here if you want newer data (server cache 6h). Or skip and enter prices manually below.</div>
       </div></div>
       <div class="step"><span class="n">2</span><div>
         <div class="lbl" style="margin-top:0"><span>Pick a model (ranked for this workload)</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Best-fitted models for this use case, ranked with the LLM Task-Fit score: profile from the archetype, minimum intelligence from the quality bar, monthly cost on your tokens. The list recomputes whenever you change the use case. After a fetch the #1 model is loaded automatically.</span></span></div>
@@ -149,7 +159,7 @@
   </section>
 </main>
 <script type="module">
-import { ARCHETYPES, defaultsFor, compute, toBomJson, toArchitectureMarkdown, toTaskFitUrl, taskFitRank, TASKFIT_PROFILE_OF } from "./engine.js";
+import { ARCHETYPES, defaultsFor, compute, selectedOf, toBomJson, toArchitectureMarkdown, toTaskFitUrl, taskFitRank, TASKFIT_PROFILE_OF } from "./engine.js";
 const cfg = await (await fetch("./config.json")).json();
 let models = [], result = null, modelsError = "";
 const $ = id => document.getElementById(id);
@@ -204,19 +214,36 @@ function applyShowIf() {
 $("reset").onclick = () => { renderFields(false); run(); };
 
 // models
-{ // token: ?token=… once, then remembered in this browser (like the AA app); stripped from the URL
-  const u = new URL(location.href); const fromUrl = u.searchParams.get("token");
-  if (fromUrl) { try { localStorage.setItem("capture_token", fromUrl); } catch {} u.searchParams.delete("token"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
-  let saved = null; try { saved = localStorage.getItem("capture_token"); } catch {}
-  $("token").value = fromUrl || saved || "";
+// ---- session: email + password → signed session shared across Costra apps; deep links carry it as ?s=
+let selectedScenario = "base";
+$("scen").addEventListener("click", (e) => { const c = e.target.closest(".sc"); if (!c) return; selectedScenario = c.dataset.sc; run(); saveState(); });
+let SESSION = null;
+{ const u = new URL(location.href); const fromUrl = u.searchParams.get("s");
+  if (fromUrl) { try { localStorage.setItem("costra_session", fromUrl); } catch {} u.searchParams.delete("s"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
+  try { SESSION = fromUrl || localStorage.getItem("costra_session"); } catch {} }
+const authHeaders = () => SESSION ? { authorization: "Bearer " + SESSION } : {};
+async function whoami() {
+  if (!SESSION) return null;
+  try { const r = await fetch("/api/auth", { headers: authHeaders() }); if (!r.ok) return null; return await r.json(); } catch { return null; }
 }
+function showGate(msg) { $("gate").hidden = false; document.querySelector("main").hidden = true; document.querySelector(".explain").hidden = true; $("gateErr").textContent = msg || ""; }
+function showApp(me) { $("gate").hidden = true; document.querySelector("main").hidden = false; document.querySelector(".explain").hidden = false; $("who").textContent = me.email; $("signout").style.display = ""; }
+$("gateForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("gateErr").textContent = "";
+  try {
+    const r = await fetch("/api/auth", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: $("g_email").value.trim(), password: $("g_pw").value }) });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || "Sign-in failed");
+    SESSION = j.session; try { localStorage.setItem("costra_session", SESSION); } catch {}
+    showApp({ email: j.email }); if (j.expires) $("who").title = "password expires " + j.expires; loadModels();
+  } catch (err) { $("gateErr").textContent = err.message; }
+});
+$("signout").onclick = () => { SESSION = null; try { localStorage.removeItem("costra_session"); } catch {} models = []; refreshModelPick(); showGate(); };
 function setStatus(text, cls) { const el = $("fetchStatus"); el.textContent = text; el.className = "status" + (cls ? " " + cls : ""); $("modelsStatus").textContent = cls === "ok" ? text.split(" · ").slice(0, 2).join(" · ") : (cls === "err" ? "model data failed" : "no model data"); }
 async function loadModels() {
-  const t = $("token").value.trim(); if (!t) { setStatus("Enter the access token first.", "err"); return; }
-  try { localStorage.setItem("capture_token", t); } catch {}
+  if (!SESSION) { setStatus("Sign in first.", "err"); return; }
   setStatus("Fetching model data from Artificial Analysis…"); modelsError = "";
   try {
-    const r = await fetch(`/api/models?token=${encodeURIComponent(t)}`); const j = await r.json();
+    const r = await fetch("/api/models", { headers: authHeaders() }); const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
     models = j.models || [];
     setStatus(`${models.length} models loaded · Artificial Analysis · fetched ${new Date(j.fetched_at || Date.now()).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })} · cached 6h`, "ok");
@@ -227,12 +254,11 @@ async function loadModels() {
     $("modelPick").value = pick && opts.includes(pick) ? pick : (opts[0] || "");
     $("modelPick").dispatchEvent(new Event("change"));
   } catch (e) {
-    const msg = /401|unauthorized/i.test(e.message) ? "Access token rejected (401) — use the same token as the LLM Task-Fit app, or check AA_MCP_TOKEN / CAPTURE_TOKEN in Vercel and redeploy." : /AA_MCP/.test(e.message) ? "Server is missing AA_MCP_URL / AA_MCP_TOKEN — set them in Vercel and redeploy." : /upstream/.test(e.message) ? "The Artificial Analysis app refused the request — check AA_MCP_TOKEN." : "Models unavailable: " + e.message;
-    setStatus(msg, "err"); modelsError = msg; refreshModelPick();
+    const msg = /401|unauthorized/i.test(e.message) ? "Session expired — sign in again." : /AA_MCP/.test(e.message) ? "Server is missing AA_MCP_URL / AA_MCP_TOKEN — set them in Vercel and redeploy." : /upstream/.test(e.message) ? "The Artificial Analysis app refused the request — check AA_MCP_TOKEN." : "Models unavailable: " + e.message;
+    setStatus(msg, "err"); modelsError = msg; refreshModelPick(); if (/401|unauthorized|expired/i.test(e.message)) { SESSION = null; try { localStorage.removeItem("costra_session"); } catch {} showGate("Session expired — sign in again."); }
   }
 }
 $("loadModels").onclick = loadModels;
-$("forgetToken").onclick = () => { try { localStorage.removeItem("capture_token"); } catch {} $("token").value = ""; models = []; setStatus("Token forgotten. Enter a token and fetch again.", ""); refreshModelPick(); };
 $("modelPick").addEventListener("change", () => {
   const m = models.find(x => x.slug === $("modelPick").value);
   if (m) { $("p_in").value = m.usd_per_1m_input; $("p_out").value = m.usd_per_1m_output; $("p_cache").value = m.usd_per_1m_cache_hit ?? ""; $("p_name").textContent = `${m.name} — from LLM Task-Fit${m.intelligence_index != null ? ` (AA intelligence ${m.intelligence_index})` : ""}`; }
@@ -245,12 +271,13 @@ function priceOverride() {
   if (pin > 0 && pout > 0) return { name: $("p_name").textContent.split(" — ")[0] || "manual", slug: $("p_name").textContent.includes("Task-Fit") ? "task-fit" : "manual", usd_per_1m_input: pin, usd_per_1m_output: pout, usd_per_1m_cache_hit: pc > 0 ? pc : null, intelligence_index: null };
   return null;
 }
-function meta() { return { name: $("m_name").value, outcome_unit: $("m_unit").value, count_source: $("m_count").value, quality_floor: $("m_floor").value, ret: location.origin + location.pathname }; }
-function saveState() { try { localStorage.setItem("capture_state", JSON.stringify({ archetype: currentArch, params: readParams(), meta: meta(), p_in: $("p_in").value, p_out: $("p_out").value, p_cache: $("p_cache").value, p_name: $("p_name").textContent, pick: $("modelPick").value })); } catch {} }
+function meta() { return { name: $("m_name").value, outcome_unit: $("m_unit").value, count_source: $("m_count").value, quality_floor: $("m_floor").value, ret: location.origin + location.pathname, s: SESSION || "" }; }
+function saveState() { try { localStorage.setItem("capture_state", JSON.stringify({ archetype: currentArch, scenario: selectedScenario, params: readParams(), meta: meta(), p_in: $("p_in").value, p_out: $("p_out").value, p_cache: $("p_cache").value, p_name: $("p_name").textContent, pick: $("modelPick").value })); } catch {} }
 function restoreState() {
   try {
     const st = JSON.parse(localStorage.getItem("capture_state") || "null"); if (!st) return false;
     if (ARCHETYPES[st.archetype]) currentArch = st.archetype;
+    if (["low", "base", "high"].includes(st.scenario)) selectedScenario = st.scenario;
     renderArch(); renderFields(false);
     for (const [k, v] of Object.entries(st.params || {})) { const el = $("fields").querySelector(`[data-id="${k}"]`); if (!el) continue; if (el.classList.contains("seg")) { el.dataset.value = String(v); el.querySelectorAll("button").forEach(b => b.className = b.dataset.v === String(v) ? "on" + (el.dataset.kind === "bool" && v === true ? " yes" : "") : ""); } else el.value = v; }
     applyShowIf();
@@ -269,7 +296,7 @@ function applyModelFromTaskFit() {
 
 function renderModelCard(m) {
   const c = $("modelCard"); if (!m) { c.hidden = true; return; }
-  const b = result?.scenarios?.base; const opt = [...$("modelPick").options].find(o => o.value === m.slug); const fit = opt ? (opt.textContent.match(/fit (\d+)/) || [])[1] : null;
+  const b = result ? selectedOf(result) : null; const opt = [...$("modelPick").options].find(o => o.value === m.slug); const fit = opt ? (opt.textContent.match(/fit (\d+)/) || [])[1] : null;
   c.hidden = false;
   c.innerHTML = `<b>${m.name}</b> <span class="muted">${m.creator || ""}</span>${fit ? ` <span class="pill">fit ${fit}</span>` : ""}
     <div class="kv"><span>intelligence</span><span>${m.intelligence_index ?? "—"}</span><span>speed</span><span>${m.output_tokens_per_sec ?? "—"} tok/s</span><span>price in / out / cached</span><span>$${m.usd_per_1m_input} / $${m.usd_per_1m_output} / ${m.usd_per_1m_cache_hit != null ? "$" + m.usd_per_1m_cache_hit : "—"} per 1M</span><span>model cost / month</span><span>${b?.cost?.model_usd_month != null ? "$ " + fmt(b.cost.model_usd_month) + " (base)" : "—"}</span></div>`;
@@ -280,7 +307,7 @@ function refreshModelPick() {
   pick.disabled = !models.length;
   let opts = "";
   if (models.length && result) {
-    const b = result.scenarios.base, p = result.params;
+    const b = selectedOf(result), p = result.params;
     const r = taskFitRank(models, { profile: TASKFIT_PROFILE_OF[result.archetype] || "bulk", minInt: cfg.defaults.quality_thresholds[p.quality_bar || "medium"], inTokens: b.month.input, outTokens: b.month.output, cachedTokens: b.month.cached, limit: 12 });
     opts = r.rows.filter(m => m.usd_per_1m_input != null).map((m, i) => `<option value="${m.slug}">${i + 1}. ${m.name} · fit ${Math.round(m.fit)} · idx ${m.intelligence_index ?? "—"} · $${m.usd_per_1m_input}/${m.usd_per_1m_output}${m.usd_per_1m_cache_hit != null ? "/" + m.usd_per_1m_cache_hit : ""} · $${fmt(m.monthly)}/mo</option>`).join("");
   }
@@ -289,11 +316,11 @@ function refreshModelPick() {
 }
 function run() {
   const a = currentArch;
-  result = compute(a, readParams(), cfg, models, priceOverride());
+  result = compute(a, readParams(), cfg, models, priceOverride(), selectedScenario);
   refreshModelPick();
-  const S = result.scenarios, b = S.base;
+  const S = result.scenarios, b = S[result.selected];
   $("scen").innerHTML = ["low", "base", "high"].map(s => { const r = S[s]; const cpo = r.cost.cost_per_outcome_eur, bl = r.cost.baseline_per_outcome_eur;
-    return `<div class="sc ${s}"><h3>${s}</h3><div class="big">${eur(cpo)} <small>per ${result.unit}</small></div>
+    return `<div class="sc ${s}${s === result.selected ? " active" : ""}" data-sc="${s}" title="Click to make this the active scenario: it drives the model ranking, the BOM and the Task-Fit hand-off"><h3>${s}${s === result.selected ? ' <span style="font-weight:400;letter-spacing:0;text-transform:none">· active</span>' : ""}</h3><div class="big">${eur(cpo)} <small>per ${result.unit}</small></div>
       <div class="bar"><i style="width:${cpo != null && bl > 0 ? Math.min(100, 100 * cpo / bl) : 0}%"></i></div><div class="help">baseline today ${eur(bl)} · ${cpo != null && bl > 0 ? (100 * (1 - cpo / bl)).toFixed(1) + "% below baseline" : "no model price"}</div>
       <div class="kv"><span>units / month</span><span>${fmt(r.month.units)} (${fmt(r.cost.outcomes_month)} valued)</span><span>attempts a</span><span>${r.assumptions.a}</span><span>input</span><span>${fmt(r.month.input)}</span><span>cached</span><span>${fmt(r.month.cached)} (h ${r.assumptions.h})</span><span>output</span><span>${fmt(r.month.output)}</span><span>model $/month</span><span>${r.cost.model_usd_month == null ? "—" : "$ " + fmt(r.cost.model_usd_month)}</span></div></div>`; }).join("");
   const fl = [];
@@ -323,7 +350,7 @@ $("copyMd").onclick = async () => { if (result) { await navigator.clipboard.writ
 $("run").onclick = run;
 if (!restoreState()) { renderArch(); renderFields(false); }
 applyModelFromTaskFit(); run();
-if ($("token").value) loadModels();
+whoami().then(me => { if (me) { showApp(me); loadModels(); } else { SESSION = null; showGate(); } });
 </script>
 </body>
 </html>

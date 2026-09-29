@@ -315,17 +315,21 @@ export function computeScenario(archetype, params, cfg, scenarioName, models, pr
   };
 }
 
-export function compute(archetype, params, cfg, models, priceOverride) {
+export function compute(archetype, params, cfg, models, priceOverride, selectedScenario = "base") {
   const scenarios = {};
   for (const s of ["low", "base", "high"]) scenarios[s] = computeScenario(archetype, params, cfg, s, models, priceOverride);
-  return { archetype, label: ARCHETYPES[archetype].label, unit: ARCHETYPES[archetype].unit, bigT: ARCHETYPES[archetype].bigT, params: { ...defaultsFor(archetype), ...params }, scenarios };
+  const selected = ["low", "base", "high"].includes(selectedScenario) ? selectedScenario : "base";
+  return { archetype, label: ARCHETYPES[archetype].label, unit: ARCHETYPES[archetype].unit, bigT: ARCHETYPES[archetype].bigT, params: { ...defaultsFor(archetype), ...params }, scenarios, selected };
 }
 
 // ---------- export formats ----------
+export const selectedOf = (result) => result.scenarios[result.selected || "base"];
+
 export function toBomJson(result, meta = {}) {
-  const b = result.scenarios.base;
+  const b = selectedOf(result);
   return {
     use_case: { name: meta.name || "", archetype: result.archetype, outcome_unit: meta.outcome_unit || result.unit, count_source: meta.count_source || "", quality_floor: meta.quality_floor || "", bigT: result.bigT },
+    scenario_used: result.selected || "base",
     assumptions: b.assumptions,
     token_profile_month: { low: result.scenarios.low.month, base: b.month, high: result.scenarios.high.month },
     model: b.model.used ? { ...b.model.used, quality_bar: result.params.quality_bar, latency: result.params.latency || "batch", context_needed: b.per_unit.context_needed, note: b.model.selection.note } : { note: b.model.selection.note },
@@ -338,11 +342,11 @@ export function toBomJson(result, meta = {}) {
 }
 
 export function toArchitectureMarkdown(result, meta = {}) {
-  const b = result.scenarios.base, j = toBomJson(result, meta);
+  const b = selectedOf(result), j = toBomJson(result, meta);
   const fmt = n => n == null ? "—" : Math.round(n).toLocaleString();
   const L = [];
   L.push(`# ${meta.name || "AI use case"} — architecture & volumes for cost estimation`, "");
-  L.push(`Archetype: **${result.label}** · unit: ${result.unit} · Big-T: ${result.bigT} · generated ${j.generated}`, "");
+  L.push(`Archetype: **${result.label}** · unit: ${result.unit} · Big-T: ${result.bigT} · sizing scenario: **${j.scenario_used}** · generated ${j.generated}`, "");
   L.push(`## Volumes (base scenario, per month)`, "", `- Units: ${fmt(b.month.units)} ${result.unit}s (${fmt(b.month.attempts)} attempts, a = ${b.assumptions.a})`);
   L.push(`- Tokens: ${fmt(b.month.input)} input (uncached), ${fmt(b.month.cached)} cached input, ${fmt(b.month.output)} output`);
   L.push(`- Context needed per request: ~${fmt(b.per_unit.context_needed)} tokens`, "");
@@ -359,7 +363,7 @@ export function toArchitectureMarkdown(result, meta = {}) {
 // ---------- hand-off to LLM Task-Fit (deep link) ----------
 const PROFILE_OF = { document: "bulk", classification: "bulk", assistant: "chat", rag: "chat", agentic: "agent" };
 export function toTaskFitParams(result, cfg, meta = {}) {
-  const b = result.scenarios.base, p = result.params;
+  const b = selectedOf(result), p = result.params;
   const callsPerUnit = result.archetype === "assistant" ? p.turns : result.archetype === "agentic" ? (b.month.attempts ? Math.max(1, Math.round((b.per_unit.input + b.per_unit.output) / Math.max(1, p.system_tokens + p.step_output_tokens + p.tools_per_step * p.tool_result_tokens))) : p.steps) : 1;
   const cachePct = Math.round(100 * b.month.cached / Math.max(1, b.month.input + b.month.cached));
   const q = new URLSearchParams({
@@ -378,6 +382,7 @@ export function toTaskFitParams(result, cfg, meta = {}) {
     uc: meta.name || result.label,
   });
   if (meta.ret) q.set("ret", meta.ret);
+  if (meta.s) q.set("s", meta.s);
   return q.toString();
 }
 export function toTaskFitUrl(result, cfg, meta = {}) {

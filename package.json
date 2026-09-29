@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "engines": { "node": "22.x" },
-  "scripts": { "test": "node --test test/engine.test.js", "cli": "node scripts/cli.js" }
+  "scripts": { "test": "node --test test/*.test.js", "cli": "node scripts/cli.js" }
 }
