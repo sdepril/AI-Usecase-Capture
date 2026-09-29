@@ -42,6 +42,8 @@
   .note.warn { background:#FDECE4; color:#7C2D12 }
   .pill { display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; background:var(--accent); color:#fff; font-weight:600 }
   .stack > * + * { margin-top:16px }
+  .linkbtn { background:none; border:0; padding:0; width:auto; color:var(--accent); font:inherit; font-size:11px; cursor:pointer; text-decoration:underline }
+  code { font-size:11px; background:var(--soft); padding:0 4px; border-radius:4px }
   .modelbox { border:1px solid var(--accent); border-radius:var(--r); padding:14px; background:#fff }
   .modelbox h2 { color:var(--accent) }
   .step { display:grid; grid-template-columns:22px 1fr; gap:10px; margin-top:12px } .step > .n { width:22px; height:22px; border-radius:50%; background:var(--ink); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; font-family:Poppins, sans-serif; margin-top:1px }
@@ -107,6 +109,7 @@
       <div class="step"><span class="n">1</span><div>
         <div class="lbl" style="margin-top:0"><span>Fetch model data</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Loads the model list (prices per 1M tokens, intelligence index, speed) from Artificial Analysis through the Costra MCP. Cached for 6 hours on the server. Needs this deployment's access token.</span></span></div>
         <div class="row" style="grid-template-columns:1fr auto"><input id="token" placeholder="access token (CAPTURE_TOKEN)" type="password"><button id="loadModels" class="primary" style="width:auto">Fetch models</button></div>
+        <div class="help" style="margin-top:4px">Remembered in this browser after the first fetch; open the app once with <code>?token=…</code> to preload it. <button type="button" class="linkbtn" id="forgetToken">Forget token</button></div>
         <div id="fetchStatus" class="status">No model data yet — fetch to get the ranked list. Or skip and enter prices manually below.</div>
       </div></div>
       <div class="step"><span class="n">2</span><div>
@@ -201,11 +204,16 @@ function applyShowIf() {
 $("reset").onclick = () => { renderFields(false); run(); };
 
 // models
-$("token").value = sessionStorage.getItem("capture_token") || new URLSearchParams(location.search).get("token") || "";
+{ // token: ?token=… once, then remembered in this browser (like the AA app); stripped from the URL
+  const u = new URL(location.href); const fromUrl = u.searchParams.get("token");
+  if (fromUrl) { try { localStorage.setItem("capture_token", fromUrl); } catch {} u.searchParams.delete("token"); history.replaceState(null, "", u.pathname + u.search + u.hash); }
+  let saved = null; try { saved = localStorage.getItem("capture_token"); } catch {}
+  $("token").value = fromUrl || saved || "";
+}
 function setStatus(text, cls) { const el = $("fetchStatus"); el.textContent = text; el.className = "status" + (cls ? " " + cls : ""); $("modelsStatus").textContent = cls === "ok" ? text.split(" · ").slice(0, 2).join(" · ") : (cls === "err" ? "model data failed" : "no model data"); }
 async function loadModels() {
   const t = $("token").value.trim(); if (!t) { setStatus("Enter the access token first.", "err"); return; }
-  sessionStorage.setItem("capture_token", t);
+  try { localStorage.setItem("capture_token", t); } catch {}
   setStatus("Fetching model data from Artificial Analysis…"); modelsError = "";
   try {
     const r = await fetch(`/api/models?token=${encodeURIComponent(t)}`); const j = await r.json();
@@ -224,6 +232,7 @@ async function loadModels() {
   }
 }
 $("loadModels").onclick = loadModels;
+$("forgetToken").onclick = () => { try { localStorage.removeItem("capture_token"); } catch {} $("token").value = ""; models = []; setStatus("Token forgotten. Enter a token and fetch again.", ""); refreshModelPick(); };
 $("modelPick").addEventListener("change", () => {
   const m = models.find(x => x.slug === $("modelPick").value);
   if (m) { $("p_in").value = m.usd_per_1m_input; $("p_out").value = m.usd_per_1m_output; $("p_cache").value = m.usd_per_1m_cache_hit ?? ""; $("p_name").textContent = `${m.name} — from LLM Task-Fit${m.intelligence_index != null ? ` (AA intelligence ${m.intelligence_index})` : ""}`; }
