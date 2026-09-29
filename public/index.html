@@ -130,7 +130,7 @@
 <script type="module">
 import { ARCHETYPES, defaultsFor, compute, toBomJson, toArchitectureMarkdown, toTaskFitUrl, taskFitRank, TASKFIT_PROFILE_OF } from "./engine.js";
 const cfg = await (await fetch("./config.json")).json();
-let models = [], result = null;
+let models = [], result = null, modelsError = "";
 const $ = id => document.getElementById(id);
 const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
 const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
@@ -187,14 +187,17 @@ $("token").value = sessionStorage.getItem("capture_token") || new URLSearchParam
 async function loadModels() {
   const t = $("token").value.trim(); if (!t) { $("modelsStatus").textContent = "enter token"; return; }
   sessionStorage.setItem("capture_token", t);
-  $("modelsStatus").textContent = "loading…";
+  $("modelsStatus").textContent = "loading…"; modelsError = "";
   try {
     const r = await fetch(`/api/models?token=${encodeURIComponent(t)}`); const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);
     models = j.models || []; try { const st = JSON.parse(localStorage.getItem("capture_state") || "null"); if (st?.pick) { run(); $("modelPick").value = st.pick; } } catch {}
     $("modelsStatus").textContent = `${models.length} models · AA ${(j.fetched_at || "").slice(0, 10)}`;
     run();
-  } catch (e) { $("modelsStatus").textContent = "models unavailable: " + e.message; }
+  } catch (e) {
+    const msg = /401|unauthorized/i.test(e.message) ? "Access token rejected (401) — check CAPTURE_TOKEN in Vercel and redeploy." : /AA_MCP/.test(e.message) ? "Server is missing AA_MCP_URL / AA_MCP_TOKEN — set them in Vercel and redeploy." : /upstream/.test(e.message) ? "The Artificial Analysis app refused the request — check AA_MCP_TOKEN." : "Models unavailable: " + e.message;
+    $("modelsStatus").textContent = msg; modelsError = msg; refreshModelPick();
+  }
 }
 $("loadModels").onclick = loadModels;
 $("modelPick").addEventListener("change", () => {
@@ -233,7 +236,7 @@ function applyModelFromTaskFit() {
 
 function refreshModelPick() {
   const pick = $("modelPick"), cur = pick.value;
-  const head = models.length ? '<option value="">— manual (enter prices below) —</option>' : '<option value="">— manual · load models (token top right) for the ranked list —</option>';
+  const head = models.length ? '<option value="">— manual (enter prices below) —</option>' : `<option value="">— manual · ${modelsError ? modelsError : "load models (token top right) for the ranked list"} —</option>`;
   let opts = "";
   if (models.length && result) {
     const b = result.scenarios.base, p = result.params;
