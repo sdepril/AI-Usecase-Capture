@@ -12,7 +12,7 @@
   body { margin:0; background:linear-gradient(180deg, var(--hero) 0%, var(--bg) 320px); color:var(--ink); font:14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif }
   h1, h2, h3, .big { font-family:Poppins, Inter, sans-serif }
   header { padding:18px 28px; display:flex; align-items:center; gap:18px; flex-wrap:wrap }
-  header .logo { font-family:Poppins, sans-serif; font-weight:700; letter-spacing:.14em; font-size:18px; color:var(--ink) }
+  header .logo { display:inline-flex; align-items:center } header .logo img { height:22px; width:auto; display:block } .wordmark { font-family:Poppins, sans-serif; font-weight:700; letter-spacing:.14em; font-size:18px; color:var(--ink) }
   header h1 { margin:0; font-size:18px; font-weight:600 }
   header .sub { color:var(--muted); font-size:12.5px; max-width:640px }
   header .right { margin-left:auto; display:flex; gap:8px; align-items:center; font-size:12px; color:var(--muted) }
@@ -42,13 +42,30 @@
   .note.warn { background:#FDECE4; color:#7C2D12 }
   .pill { display:inline-block; padding:1px 9px; border-radius:999px; font-size:11px; background:var(--accent); color:#fff; font-weight:600 }
   .stack > * + * { margin-top:16px }
+  .lbl { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); margin-top:10px }
+  .info { position:relative; display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; border:1px solid var(--muted); color:var(--muted); font-size:10px; font-weight:700; font-family:Poppins, sans-serif; cursor:help; flex:none }
+  .info:hover, .info:focus, .info.open { border-color:var(--accent); color:var(--accent); outline:none }
+  .info .tip { display:none; position:absolute; left:20px; top:50%; transform:translateY(-50%); z-index:5; width:260px; background:var(--ink); color:#fff; font:12px/1.4 Inter, sans-serif; font-weight:400; padding:8px 10px; border-radius:8px; box-shadow:0 6px 20px rgba(13,36,67,.18) }
+  .info:hover .tip, .info:focus .tip, .info.open .tip { display:block }
+  .info .tip::before { content:""; position:absolute; left:-5px; top:50%; transform:translateY(-50%); border:5px solid transparent; border-left:0; border-right-color:var(--ink) }
+  .seg { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px }
+  .seg button { width:auto; padding:6px 12px; border-radius:999px; background:#fff; border:1px solid var(--line); color:var(--ink); font-weight:500; font-size:12.5px }
+  .seg button:hover { border-color:var(--accent) }
+  .seg button.on { background:var(--ink); border-color:var(--ink); color:#fff }
+  .seg button.on.yes { background:var(--accent); border-color:var(--accent) }
+  .arch { display:grid; gap:6px; margin-top:4px }
+  .arch button { width:100%; text-align:left; padding:8px 10px; border-radius:10px; background:#fff; border:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:8px }
+  .arch button:hover { border-color:var(--accent) }
+  .arch button.on { border-color:var(--ink); background:var(--soft) }
+  .arch .t { font-weight:600; font-size:12.5px; color:var(--ink) } .arch .m { font-size:10.5px; color:var(--muted); white-space:nowrap }
+  .arch button.on .m { color:var(--accent) }
   .muted { color:var(--muted) }
   .bar { height:6px; background:rgba(13,36,67,.08); border-radius:3px; overflow:hidden; margin-top:6px } .bar i { display:block; height:100%; background:var(--accent) } .sc.base .bar { background:rgba(255,255,255,.15) }
 </style>
 </head>
 <body>
 <header>
-  <span class="logo">COSTRA</span><h1>AI Use-Case Capture</h1>
+  <a class="logo" href="https://costra.io" target="_blank" rel="noopener"><img src="logo.png" alt="Costra" onerror="if(!this.dataset.f){this.dataset.f=1;this.src='https://costra.io/__l5e/assets-v1/ccb6e6f5-eb43-4485-89b4-b1b834955424/Logo-black.png'}else{this.replaceWith(Object.assign(document.createElement('span'),{className:'wordmark',textContent:'COSTRA'}))}"></a><h1>AI Use-Case Capture</h1>
   <span class="sub">describe the use case → token profile · model class · Big-T · BOM for the Azure estimator · cost per valued outcome (low / base / high)</span>
   <div class="right"><span id="modelsStatus" title="Model prices, intelligence index and speed come from Artificial Analysis via the Costra MCP. Without them you can still compute with manual prices.">no model data</span><input id="token" placeholder="access token" style="width:160px" title="The CAPTURE_TOKEN of this deployment"><button id="loadModels" style="width:auto">Load models</button></div>
 </header>
@@ -63,13 +80,10 @@
   <section class="panel stack">
     <div>
       <h2>Use case</h2>
-      <label>Name<input id="m_name" placeholder="e.g. Contract summarisation"><span class="help">Short working name; appears in the BOM and the architecture document.</span></label>
-      <label>Archetype<select id="archetype"></select><span class="help">Pick the shape of the workload. Each archetype has its own questions, formulas and components — and its own Big-T class (how cost scales).</span></label>
-      <div class="row">
-        <label>Outcome unit<input id="m_unit" placeholder="e.g. reviewed contract"><span class="help">The thing the business gets. Cost is reported per unit of this — not per token.</span></label>
-        <label>Where is it counted?<input id="m_count" placeholder="e.g. DMS status 'reviewed'"><span class="help">The system that counts outcomes. No count source, no unit economics.</span></label>
-      </div>
-      <label>Quality floor (what counts as a valued outcome)<input id="m_floor" placeholder="e.g. summary accepted by reviewer without edits"><span class="help">When does an output count? Without a floor you count attempts, and cost per outcome looks better while quality drops.</span></label>
+      <div class="lbl"><span>Name</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Short working name; appears in the BOM and the architecture document.</span></span></div><input id="m_name" placeholder="e.g. Contract summarisation">
+      <div class="lbl"><span>Archetype</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Pick the shape of the workload. Each archetype has its own questions, formulas and components — and its own Big-T class (how cost scales).</span></span></div><div id="archetype" class="arch"></div>
+      <div class="row"><div><div class="lbl"><span>Outcome unit</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">The thing the business gets. Cost is reported per unit of this — not per token.</span></span></div><input id="m_unit" placeholder="e.g. reviewed contract"></div><div><div class="lbl"><span>Where is it counted?</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">The system that counts outcomes. No count source, no unit economics.</span></span></div><input id="m_count" placeholder="e.g. DMS status 'reviewed'"></div></div>
+      <div class="lbl"><span>Quality floor (what counts as a valued outcome)</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">When does an output count? Without a floor you count attempts, and cost per outcome looks better while quality drops.</span></span></div><input id="m_floor" placeholder="e.g. summary accepted by reviewer without edits">
     </div>
     <div>
       <h2>Parameters</h2>
@@ -77,12 +91,12 @@
     </div>
     <div>
       <h2>Model price (optional override)</h2>
-      <select id="modelPick"><option value="">— recommended by quality bar & latency —</option></select><span class="help">Leave on "recommended" to let the tool pick the cheapest model above your quality bar (Artificial Analysis data). Pick one to force a model.</span>
+      <div class="lbl"><span>Model</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">Leave on "recommended" to let the tool pick the cheapest model above your quality bar (Artificial Analysis data). Pick one to force a model.</span></span></div><select id="modelPick"><option value="">— recommended by quality bar & latency —</option></select>
       <div class="row">
-        <label>USD / 1M input<input id="p_in" type="number" step="0.01" placeholder="manual"></label>
-        <label>USD / 1M output<input id="p_out" type="number" step="0.01" placeholder="manual"></label>
+        <div><div class="lbl"><span>USD / 1M input</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">List price per 1M input tokens. Used only when both fields are filled — for a model not in the data, or a negotiated rate.</span></span></div><input id="p_in" type="number" step="0.01" placeholder="manual"></div>
+        <div><div class="lbl"><span>USD / 1M output</span><span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">List price per 1M output tokens. Output is usually 3–5× input price.</span></span></div><input id="p_out" type="number" step="0.01" placeholder="manual"></div>
       </div>
-      <span class="help">List prices per 1M tokens. Used only when both fields are filled — for a model that is not in the data, or a negotiated rate.</span>
+      
     </div>
     <div class="btns"><button class="primary" id="run">Compute</button><button class="ghost" id="reset">Reset defaults</button></div>
   </section>
@@ -111,40 +125,53 @@ const cfg = await (await fetch("./config.json")).json();
 let models = [], result = null;
 const $ = id => document.getElementById(id);
 const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
+const esc = t => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+const lbl = (text, help) => `<div class="lbl"><span>${text}</span>${help ? `<span class="info" tabindex="0" role="button" aria-label="Explanation">i<span class="tip">${esc(help)}</span></span>` : ""}</div>`;
+document.addEventListener("click", e => { const i = e.target.closest(".info"); document.querySelectorAll(".info.open").forEach(x => { if (x !== i) x.classList.remove("open"); }); if (i) i.classList.toggle("open"); });
 const eur = n => n == null ? "—" : "€ " + (n < 1 ? n.toFixed(3) : n.toFixed(2));
 
-// archetype select + dynamic fields
+// archetype as clickable cards + dynamic fields
 const aSel = $("archetype");
-for (const [k, v] of Object.entries(ARCHETYPES)) aSel.insertAdjacentHTML("beforeend", `<option value="${k}">${v.label}</option>`);
+let currentArch = Object.keys(ARCHETYPES)[0];
+function renderArch() {
+  aSel.innerHTML = Object.entries(ARCHETYPES).map(([k, v]) => `<button type="button" class="${k === currentArch ? "on" : ""}" data-arch="${k}"><span class="t">${v.label}</span><span class="m">${v.bigT} · per ${v.unit}</span></button>`).join("");
+  aSel.querySelectorAll("[data-arch]").forEach(b => b.onclick = () => { currentArch = b.dataset.arch; renderArch(); renderFields(false); run(); });
+}
 function renderFields(keepValues = false) {
-  const a = aSel.value, prev = keepValues ? readParams() : defaultsFor(a);
+  const a = currentArch, prev = keepValues ? readParams() : defaultsFor(a);
   const box = $("fields"); box.innerHTML = "";
   for (const f of ARCHETYPES[a].fields) {
     const v = prev[f.id] ?? f.default;
     let ctrl;
-    if (f.type === "select") ctrl = `<select data-id="${f.id}">${f.options.map(o => `<option ${o == v ? "selected" : ""}>${o}</option>`).join("")}</select>`;
-    else if (f.type === "bool") ctrl = `<span><input type="checkbox" data-id="${f.id}" ${v ? "checked" : ""}> yes</span>`;
-    else ctrl = `<input type="number" data-id="${f.id}" value="${v}" step="${f.step ?? 1}">`;
-    box.insertAdjacentHTML("beforeend", `<label data-field="${f.id}">${f.label}${ctrl}${f.help ? `<span class="help">${f.help}</span>` : ""}</label>`);
+    if (f.type === "select") ctrl = `<div class="seg" data-id="${f.id}" data-kind="select" data-value="${v}">${f.options.map(o => `<button type="button" data-v="${o}" class="${o == v ? "on" : ""}">${o}</button>`).join("")}</div>`;
+    else if (f.type === "bool") ctrl = `<div class="seg" data-id="${f.id}" data-kind="bool" data-value="${v}"><button type="button" data-v="true" class="${v ? "on yes" : ""}">Yes</button><button type="button" data-v="false" class="${!v ? "on" : ""}">No</button></div>`;
+    else ctrl = `<input type="number" data-id="${f.id}" data-kind="number" value="${v}" step="${f.step ?? 1}">`;
+    box.insertAdjacentHTML("beforeend", `<div data-field="${f.id}">${lbl(f.label, f.help)}${ctrl}</div>`);
   }
-  box.querySelectorAll("[data-id]").forEach(el => el.addEventListener("change", () => { applyShowIf(); run(); }));
+  box.querySelectorAll("input[data-id]").forEach(el => el.addEventListener("change", () => { applyShowIf(); run(); }));
+  box.querySelectorAll(".seg[data-id]").forEach(seg => seg.querySelectorAll("button").forEach(b => b.onclick = () => {
+    seg.dataset.value = b.dataset.v; seg.querySelectorAll("button").forEach(x => x.className = ""); b.className = "on" + (seg.dataset.kind === "bool" && b.dataset.v === "true" ? " yes" : "");
+    applyShowIf(); run();
+  }));
   applyShowIf();
 }
 function readParams() {
   const out = {};
-  $("fields").querySelectorAll("[data-id]").forEach(el => { const id = el.dataset.id; out[id] = el.type === "checkbox" ? el.checked : el.tagName === "SELECT" ? (isNaN(+el.value) ? el.value : el.value) : +el.value; });
+  $("fields").querySelectorAll("[data-id]").forEach(el => {
+    const id = el.dataset.id, k = el.dataset.kind;
+    out[id] = k === "bool" ? el.dataset.value === "true" : k === "select" ? el.dataset.value : +el.value;
+  });
   return out;
 }
 function applyShowIf() {
   const p = readParams();
-  for (const f of ARCHETYPES[aSel.value].fields) {
+  for (const f of ARCHETYPES[currentArch].fields) {
     const el = $("fields").querySelector(`[data-field="${f.id}"]`);
     if (!f.showIf) continue;
     const [k, vals] = Object.entries(f.showIf)[0];
     el.style.display = vals.includes(p[k]) ? "" : "none";
   }
 }
-aSel.addEventListener("change", () => { renderFields(false); run(); });
 $("reset").onclick = () => { renderFields(false); run(); };
 
 // models
@@ -174,7 +201,7 @@ function priceOverride() {
 function meta() { return { name: $("m_name").value, outcome_unit: $("m_unit").value, count_source: $("m_count").value, quality_floor: $("m_floor").value }; }
 
 function run() {
-  const a = aSel.value;
+  const a = currentArch;
   result = compute(a, readParams(), cfg, models, priceOverride());
   const S = result.scenarios, b = S.base;
   $("scen").innerHTML = ["low", "base", "high"].map(s => { const r = S[s]; const cpo = r.cost.cost_per_outcome_eur, bl = r.cost.baseline_per_outcome_eur;
@@ -202,7 +229,7 @@ $("dlMd").onclick = () => result && download("architecture.md", toArchitectureMa
 $("copyMd").onclick = async () => { if (result) { await navigator.clipboard.writeText(toArchitectureMarkdown(result, meta())); $("copyMd").textContent = "Copied ✓"; setTimeout(() => $("copyMd").textContent = "Copy markdown for Azure estimator", 1500); } };
 ["m_name", "m_unit", "m_count", "m_floor"].forEach(id => $(id).addEventListener("change", run));
 $("run").onclick = run;
-renderFields(false); run();
+renderArch(); renderFields(false); run();
 if ($("token").value) loadModels();
 </script>
 </body>
