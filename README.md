@@ -40,7 +40,9 @@ python3 -m http.server 8765 --directory public   # UI zonder modeldata: prijzen 
    - `CAPTURE_TOKEN` — eigen toegangstoken voor deze app (`openssl rand -hex 24`)
 3. Deploy. Open `https://<domein>/?token=<CAPTURE_TOKEN>` → "Load models".
 
-## Hand-off naar de Azure estimator
+## Hand-off naar LLM Task-Fit en de Azure estimator
+"Open in LLM Task-Fit →" opent de AA-app met profiel, maandworkload (in/out/cache), minimum-intelligentie en de Tokenomics-inputs (tasks, calls per task, agent depth, tokens per call, success rate) in de URL; de AA-app vult ze in en toont een banner. Zo kiest Task-Fit het model op de échte workload, en rekent de Tokenomics-tab de hefbomen door. URL van de AA-app: `links.taskfit_url` in `public/config.json`.
+
 "Download architecture.md" of "Copy markdown" → dat is het architectuurdocument dat de azure-estimator-skill inleest (componenten, SKU-hints, volumes, aannames). `bom.json` is het machine-leesbare equivalent en landt later als estimate-regels in de use-case ledger.
 
 ## Status

@@ -77,3 +77,15 @@ test("exports: BOM json and markdown render", () => {
   const md = toArchitectureMarkdown(r, { name: "Policy Q&A" });
   assert.ok(md.includes("| Component |") && md.includes("Cost per outcome"));
 });
+
+test("task-fit deep link carries workload, quality bar and tokenomics inputs", async () => {
+  const { toTaskFitUrl } = await import("../public/engine.js");
+  const r = compute("assistant", defaultsFor("assistant"), cfg, models);
+  const u = new URL(toTaskFitUrl(r, cfg, { name: "Helpdesk bot" }));
+  const q = u.searchParams;
+  assert.equal(q.get("profile"), "chat");
+  assert.equal(q.get("minInt"), "55");
+  assert.equal(q.get("tkK"), "6");
+  assert.ok(+q.get("in") > 0 && +q.get("out") > 0);
+  assert.equal(u.hash, "#tokenomics");
+});

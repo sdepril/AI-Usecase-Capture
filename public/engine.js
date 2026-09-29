@@ -355,3 +355,31 @@ export function toArchitectureMarkdown(result, meta = {}) {
   L.push(`Region and SKU sizing to be priced with the Azure estimator. ${j.attribution}`);
   return L.join("\n");
 }
+
+// ---------- hand-off to LLM Task-Fit (deep link) ----------
+const PROFILE_OF = { document: "bulk", classification: "bulk", assistant: "chat", rag: "chat", agentic: "agent" };
+export function toTaskFitParams(result, cfg, meta = {}) {
+  const b = result.scenarios.base, p = result.params;
+  const callsPerUnit = result.archetype === "assistant" ? p.turns : result.archetype === "agentic" ? (b.month.attempts ? Math.max(1, Math.round((b.per_unit.input + b.per_unit.output) / Math.max(1, p.system_tokens + p.step_output_tokens + p.tools_per_step * p.tool_result_tokens))) : p.steps) : 1;
+  const cachePct = Math.round(100 * b.month.cached / Math.max(1, b.month.input + b.month.cached));
+  const q = new URLSearchParams({
+    profile: PROFILE_OF[result.archetype] || "custom",
+    in: ((b.month.input + b.month.cached) / 1e6).toFixed(1),
+    out: (b.month.output / 1e6).toFixed(2),
+    cache: String(cachePct),
+    minInt: String(cfg.defaults.quality_thresholds[p.quality_bar || "medium"]),
+    tkN: String(Math.round(b.month.attempts)),
+    tkK: String(callsPerUnit),
+    tkA: String(result.archetype === "agentic" ? Math.max(1, p.sub_agents + 1) : 1),
+    tkC: String(cachePct),
+    tkI: String(Math.round(b.per_unit.input / callsPerUnit)),
+    tkO: String(Math.round(b.per_unit.output / callsPerUnit)),
+    tkSR: String(Math.round(100 * p.success_rate)),
+    uc: meta.name || result.label,
+  });
+  return q.toString();
+}
+export function toTaskFitUrl(result, cfg, meta = {}) {
+  const base = (cfg.links && cfg.links.taskfit_url) || "https://artificial-analysis-mcp.vercel.app/";
+  return base.replace(/\/?$/, "/") + "?" + toTaskFitParams(result, cfg, meta) + "#tokenomics";
+}

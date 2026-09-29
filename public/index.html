@@ -73,7 +73,7 @@
   <div class="row3">
     <div><b>1 · Describe</b><p>Pick an archetype and answer the questions. Every field has a one-line explanation and a default you should override with what you actually know.</p></div>
     <div><b>2 · Deterministic maths</b><p>Tokens per unit → tokens per month → model cost, with three scenarios (low / base / high) that vary tokens-per-word, retries and cache hit. No LLM guesses a number.</p></div>
-    <div><b>3 · Model, BOM, outcome</b><p>The cheapest model above your quality bar (Artificial Analysis), a bill of materials with volumes for the Azure estimator, and cost per valued outcome next to what it costs today.</p></div>
+    <div><b>3 · Model, BOM, outcome</b><p>The cheapest model above your quality bar (Artificial Analysis), a bill of materials with volumes for the Azure estimator, and cost per valued outcome next to what it costs today. "Open in LLM Task-Fit" hands the workload to the model-ranking app; the BOM markdown goes to the Azure estimator for infra pricing.</p></div>
   </div>
 </details>
 <main>
@@ -114,13 +114,13 @@
     <div class="panel">
       <h2>Bill of materials <span class="muted">(base scenario)</span></h2>
       <table id="bom"><thead><tr><th>Component</th><th>Role</th><th>SKU hint</th><th style="text-align:right">Quantity</th><th>Unit</th><th>Source</th></tr></thead><tbody></tbody></table>
-      <div class="btns"><button id="dlJson" style="width:auto">Download bom.json</button><button id="dlMd" style="width:auto">Download architecture.md</button><button id="copyMd" style="width:auto" class="ghost">Copy markdown for Azure estimator</button></div>
+      <div class="btns"><button id="openTaskFit" class="primary" style="width:auto">Open in LLM Task-Fit →</button><button id="dlJson" style="width:auto">Download bom.json</button><button id="dlMd" style="width:auto">Download architecture.md</button><button id="copyMd" style="width:auto" class="ghost">Copy markdown for Azure estimator</button></div>
     </div>
     <div class="panel"><h2>Assumptions & notes</h2><div id="notes"></div></div>
   </section>
 </main>
 <script type="module">
-import { ARCHETYPES, defaultsFor, compute, toBomJson, toArchitectureMarkdown } from "./engine.js";
+import { ARCHETYPES, defaultsFor, compute, toBomJson, toArchitectureMarkdown, toTaskFitUrl } from "./engine.js";
 const cfg = await (await fetch("./config.json")).json();
 let models = [], result = null;
 const $ = id => document.getElementById(id);
@@ -225,6 +225,7 @@ function run() {
 }
 function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = name; a.click(); }
 $("dlJson").onclick = () => result && download("bom.json", JSON.stringify(toBomJson(result, meta()), null, 2));
+$("openTaskFit").onclick = () => { if (result) window.open(toTaskFitUrl(result, cfg, meta()), "_blank", "noopener"); };
 $("dlMd").onclick = () => result && download("architecture.md", toArchitectureMarkdown(result, meta()));
 $("copyMd").onclick = async () => { if (result) { await navigator.clipboard.writeText(toArchitectureMarkdown(result, meta())); $("copyMd").textContent = "Copied ✓"; setTimeout(() => $("copyMd").textContent = "Copy markdown for Azure estimator", 1500); } };
 ["m_name", "m_unit", "m_count", "m_floor"].forEach(id => $(id).addEventListener("change", run));
